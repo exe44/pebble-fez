@@ -64,7 +64,7 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
 
   static GPoint screen_poss[32];
 
-  // get current layer pos (frame center) in world coordinate
+  // get current layer pos (frame center) in screen coordinate
 
   Vec3 center_view_pos;
   mat4_multiply_vec3(&center_view_pos, &view_matrix, &poly_layer->pos);
@@ -83,7 +83,6 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
   Vec3 model_pos, scale_pos, world_pos, view_pos;
   for (int i = 0; i < poly->vertex_num; ++i)
   {
-    vec3_minus(&model_pos, &poly->vertexs[i], &poly->center);
     vec3_multiply(&scale_pos, &poly->vertexs[i], POLY_SCALE);
     vec3_minus(&model_pos, &scale_pos, &poly->center);
     vec3_plus(&world_pos, &poly_layer->pos, &model_pos);
@@ -191,7 +190,6 @@ void anim_update(struct Animation *animation, const uint32_t time_normalized)
 }
 
 void anim_teardown(struct Animation *animation)
-// void anim_stopped(struct Animation *animation, bool finished, void *context)
 {
   eye = eye_waypoints[eye_to_idx];
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
@@ -306,9 +304,6 @@ void handle_init(AppContextRef ctx)
   animation_set_delay(&anim, 500);
   animation_set_duration(&anim, 500);
   animation_set_implementation(&anim, &anim_impl);
-  // animation_set_handlers(&anim, (AnimationHandlers){
-  //       .stopped = (AnimationStoppedHandler)anim_stopped,
-  //     }, NULL);
 
   //
 
