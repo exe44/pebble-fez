@@ -207,26 +207,63 @@ void anim_teardown(struct Animation *animation)
 int current_hr = -1;
 int current_min = -1;
 
+int calculate_12_format(int hr)
+{
+  if (hr == 0) hr += 12;
+  if (hr > 12) hr -= 12;
+  return hr;
+}
+
 // Called once per minute
 void handle_minute_tick(AppContextRef ctx, PebbleTickEvent *t)
 {
   PblTm currentTime;
   get_time(&currentTime);
 
-  if (current_hr != currentTime.tm_hour)
-  {
-    current_hr = currentTime.tm_hour;
+  int hr = clock_is_24h_style() ? currentTime.tm_hour : calculate_12_format(currentTime.tm_hour);
 
-    poly_layer_set_poly_ref(&digits[0], &number_polys[(int)(current_hr / 10)]);
-    poly_layer_set_poly_ref(&digits[1], &number_polys[current_hr % 10]);
+  if (current_hr != hr)
+  {
+    int digit_0 = (int)(hr / 10);
+    int digit_1 = hr % 10;
+
+    if (current_hr == -1 || (int)(current_hr / 10) != digit_0)
+    {
+      if (digit_0 == 0)
+      {
+        layer_set_hidden(&digits[0].layer, true);
+      }
+      else
+      {
+        layer_set_hidden(&digits[0].layer, false);
+        poly_layer_set_poly_ref(&digits[0], &number_polys[digit_0]);
+      }
+    }
+
+    if (current_hr == -1 || (current_hr % 10) != digit_1)
+    {
+      poly_layer_set_poly_ref(&digits[1], &number_polys[digit_1]);
+    }
+
+    current_hr = hr;
   }
 
   if (current_min != currentTime.tm_min)
   {
-    current_min = currentTime.tm_min;
+    int digit_2 = (int)(currentTime.tm_min / 10);
+    int digit_3 = currentTime.tm_min % 10;
 
-    poly_layer_set_poly_ref(&digits[2], &number_polys[(int)(current_min / 10)]);
-    poly_layer_set_poly_ref(&digits[3], &number_polys[current_min % 10]);
+    if (current_min == -1 || (int)(current_min / 10) != digit_2)
+    {
+      poly_layer_set_poly_ref(&digits[2], &number_polys[digit_2]);
+    }
+
+    if (current_min == -1 || (current_min % 10) != digit_3)
+    {
+      poly_layer_set_poly_ref(&digits[3], &number_polys[digit_3]);
+    }
+
+    current_min = currentTime.tm_min;
 
     // start camera move animation
 
