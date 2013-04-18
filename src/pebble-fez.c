@@ -189,8 +189,12 @@ void anim_update(struct Animation *animation, const uint32_t time_normalized)
   }
 }
 
-void anim_teardown(struct Animation *animation)
+// void anim_teardown(struct Animation *animation)
+void anim_stopped(struct Animation *animation, bool finished, void *context)
 {
+  if (!finished)
+    return;
+
   eye = eye_waypoints[eye_to_idx];
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
 
@@ -299,11 +303,16 @@ void handle_init(AppContextRef ctx)
 
   anim_impl.setup = NULL;
   anim_impl.update = anim_update;
-  anim_impl.teardown = anim_teardown;
+  // anim_impl.teardown = anim_teardown;
+  anim_impl.teardown = NULL;
   animation_init(&anim);
-  animation_set_delay(&anim, 500);
-  animation_set_duration(&anim, 500);
+  animation_set_delay(&anim, 500); // slow version: 1000
+  animation_set_duration(&anim, 500); // slow version: 3000
   animation_set_implementation(&anim, &anim_impl);
+
+  animation_set_handlers(&anim, (AnimationHandlers) {
+    .stopped = (AnimationStoppedHandler)anim_stopped,
+  }, NULL);
 
   //
 
