@@ -1,0 +1,16 @@
+{
+  "uuid": "ce863abc-d990-412b-b177-632bb7951c12",
+  "shortName": "FEZ",
+  "longName": "FEZ",
+  "companyName": "exe",
+  "versionCode": 2,
+  "versionLabel": "2.0.0",
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {
+  },
+  "resources": {
+    "media": []
+  }
+}

@@ -1,21 +1,13 @@
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
-
+#include <pebble.h>
 #include "math_helper.h"
 #include "poly_data.h"
 
-#define MY_UUID { 0xCE, 0x86, 0x3A, 0xBC, 0xD9, 0x90, 0x41, 0x2B, 0xB1, 0x77, 0x63, 0x2B, 0xB7, 0x95, 0x1C, 0x12 }
-PBL_APP_INFO(MY_UUID,
-             "FEZ", "exe",
-             1, 0, /* App version */
-             DEFAULT_MENU_ICON,
-             APP_INFO_WATCH_FACE);
-
-Window window;
-Mat4 view_matrix;
-
+#define FEZ_SLOW_VERSION 0
 #define POLY_SCALE 1.4f
+#define NUM_DIGITS 4
+
+Window* window;
+Mat4 view_matrix;
 
 //==============================================================================
 
@@ -48,16 +40,17 @@ void poly_init(Poly* poly)
 
 //==============================================================================
 
-typedef struct PolyLayer
+typedef struct PolyLayerData
 {
-  Layer layer;
   Poly* poly_ref;
   Vec3 pos;
-} PolyLayer;
+} PolyLayerData;
+typedef Layer PolyLayer;
 
 void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
 {
-  Poly* poly = poly_layer->poly_ref;
+  PolyLayerData *data = layer_get_data(poly_layer);
+  Poly* poly = data->poly_ref;
 
   if (NULL == poly)
     return;
@@ -67,16 +60,16 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
   // get current layer pos (frame center) in screen coordinate
 
   Vec3 center_view_pos;
-  mat4_multiply_vec3(&center_view_pos, &view_matrix, &poly_layer->pos);
+  mat4_multiply_vec3(&center_view_pos, &view_matrix, &data->pos);
   GPoint center_screen_pos;
   GetScreenCoordPos(&center_screen_pos, &center_view_pos);
 
   // update frame
 
-  GRect frame = poly_layer->layer.frame;
+  GRect frame = layer_get_frame(poly_layer);
   frame.origin.x = center_screen_pos.x - frame.size.w / 2;
   frame.origin.y = center_screen_pos.y - frame.size.h / 2;
-  layer_set_frame(&poly_layer->layer, frame);
+  layer_set_frame(poly_layer, frame);
 
   // get poly's vertex pos in frame coordinate
 
@@ -85,18 +78,19 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
   {
     vec3_multiply(&scale_pos, &poly->vertexs[i], POLY_SCALE);
     vec3_minus(&model_pos, &scale_pos, &poly->center);
-    vec3_plus(&world_pos, &poly_layer->pos, &model_pos);
+    vec3_plus(&world_pos, &data->pos, &model_pos);
     mat4_multiply_vec3(&view_pos, &view_matrix, &world_pos);
 
     GetScreenCoordPos(&screen_poss[i], &view_pos);
-    screen_poss[i].x = screen_poss[i].x - center_screen_pos.x + poly_layer->layer.frame.size.w / 2;
-    screen_poss[i].y = screen_poss[i].y - center_screen_pos.y + poly_layer->layer.frame.size.h / 2;
+    screen_poss[i].x = screen_poss[i].x - center_screen_pos.x + frame.size.w / 2;
+    screen_poss[i].y = screen_poss[i].y - center_screen_pos.y + frame.size.h / 2;
   }
 
   // draw line according to vertex idx
 
   int prev_vertex_idx = -1;
   int vertex_idx = -1;
+  graphics_context_set_stroke_color(ctx, GColorWhite);
 
   for (int i = 0; i < poly->idx_num; ++i)
   {
@@ -122,30 +116,36 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
   }
 }
 
-void poly_layer_init(PolyLayer *poly_layer, GSize size, Vec3 pos)
+PolyLayer *poly_layer_create(GSize size, Vec3 pos)
 {
+  
+  PolyLayer *layer;
+  PolyLayerData *data;
+  
   // pos is frame center
-
   GPoint screen_pos;
   GetScreenCoordPos(&screen_pos, &pos);
-  layer_init(&poly_layer->layer, GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h));
+  layer = layer_create_with_data(GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h), sizeof(PolyLayerData));
+  data = layer_get_data(layer);
+  data->poly_ref = NULL;
+  data->pos = pos;
 
-  poly_layer->layer.update_proc = (LayerUpdateProc)poly_layer_update_proc;
-
-  poly_layer->poly_ref = NULL;
-  poly_layer->pos = pos;
+  layer_set_update_proc(layer, poly_layer_update_proc);
+  
+  return layer;
 }
 
 void poly_layer_set_poly_ref(PolyLayer *poly_layer, Poly* poly)
 {
-  poly_layer->poly_ref = poly;
-  layer_mark_dirty(&poly_layer->layer); 
+  
+  ((PolyLayerData*)layer_get_data(poly_layer))->poly_ref = poly;
+  layer_mark_dirty(poly_layer);
 }
 
 //==============================================================================
 
 Poly number_polys[10];
-PolyLayer digits[4];
+PolyLayer *digits[NUM_DIGITS];
 
 #define MAKE_NUM_POLY(NUM) \
   poly_init(&number_polys[NUM]); \
@@ -169,24 +169,25 @@ Vec3 eye_waypoints[] = {
 
 Vec3 eye_from;
 int eye_to_idx;
-int eye_num;
 
 //==============================================================================
 
 AnimationImplementation anim_impl;
-Animation anim;
+Animation *anim;
 
 void anim_update(struct Animation *animation, const uint32_t time_normalized)
 {
+  
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
   eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
   eye.y = eye_from.y * (1 - ratio) + eye_waypoints[eye_to_idx].y * ratio;
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
 
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < NUM_DIGITS; ++i)
   {
-    layer_mark_dirty(&digits[i].layer);
+    layer_mark_dirty(digits[i]);
   }
+  
 }
 
 // void anim_teardown(struct Animation *animation)
@@ -198,10 +199,11 @@ void anim_stopped(struct Animation *animation, bool finished, void *context)
   eye = eye_waypoints[eye_to_idx];
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
 
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < NUM_DIGITS; ++i)
   {
-    layer_mark_dirty(&digits[i].layer);
+    layer_mark_dirty(digits[i]);
   }
+  
 }
 
 //==============================================================================
@@ -217,12 +219,9 @@ int calculate_12_format(int hr)
 }
 
 // Called once per minute
-void handle_minute_tick(AppContextRef ctx, PebbleTickEvent *t)
+void handle_minute_tick(struct tm *time, TimeUnits units_changed)
 {
-  PblTm currentTime;
-  get_time(&currentTime);
-
-  int hr = clock_is_24h_style() ? currentTime.tm_hour : calculate_12_format(currentTime.tm_hour);
+  int hr = clock_is_24h_style() ? time->tm_hour : calculate_12_format(time->tm_hour);
 
   if (current_hr != hr)
   {
@@ -233,84 +232,72 @@ void handle_minute_tick(AppContextRef ctx, PebbleTickEvent *t)
     {
       if (digit_0 == 0)
       {
-        layer_set_hidden(&digits[0].layer, true);
+        layer_set_hidden(digits[0], true);
       }
       else
       {
-        layer_set_hidden(&digits[0].layer, false);
-        poly_layer_set_poly_ref(&digits[0], &number_polys[digit_0]);
+        layer_set_hidden(digits[0], false);
+        poly_layer_set_poly_ref(digits[0], &number_polys[digit_0]);
       }
     }
 
     if (current_hr == -1 || (current_hr % 10) != digit_1)
     {
-      poly_layer_set_poly_ref(&digits[1], &number_polys[digit_1]);
+      poly_layer_set_poly_ref(digits[1], &number_polys[digit_1]);
     }
 
     current_hr = hr;
   }
 
-  if (current_min != currentTime.tm_min)
+  if (current_min != time->tm_min)
   {
-    int digit_2 = (int)(currentTime.tm_min / 10);
-    int digit_3 = currentTime.tm_min % 10;
+    int digit_2 = (int)(time->tm_min / 10);
+    int digit_3 = time->tm_min % 10;
 
     if (current_min == -1 || (int)(current_min / 10) != digit_2)
     {
-      poly_layer_set_poly_ref(&digits[2], &number_polys[digit_2]);
+      poly_layer_set_poly_ref(digits[2], &number_polys[digit_2]);
     }
 
     if (current_min == -1 || (current_min % 10) != digit_3)
     {
-      poly_layer_set_poly_ref(&digits[3], &number_polys[digit_3]);
+      poly_layer_set_poly_ref(digits[3], &number_polys[digit_3]);
     }
 
-    current_min = currentTime.tm_min;
+    current_min = time->tm_min;
 
     // start camera move animation
 
-    if (animation_is_scheduled(&anim))
-      animation_unschedule(&anim);
+    if (animation_is_scheduled(anim))
+      animation_unschedule(anim);
 
     eye_from = eye;
-    eye_to_idx++;
-    if (eye_to_idx >= eye_num)
-      eye_to_idx = 0;
-
-    animation_schedule(&anim);
+    eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
+    animation_schedule(anim);
   }
+  
 }
 
-void handle_init(AppContextRef ctx)
+void handle_init()
 {
-  (void)ctx;
-
-  window_init(&window, "Window Name");
-  window_stack_push(&window, true /* Animated */);
-  window_set_background_color(&window, GColorBlack);
+  window = window_create();
+  window_stack_push(window, true);
+  window_set_background_color(window, GColorBlack);
 
   //
 
-  eye = eye_waypoints[0];
-  at = Vec3(0, 0, 0);
-  up = Vec3(0, 1, 0);
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
-
-  eye_to_idx = 0;
-  eye_num = sizeof(eye_waypoints) / sizeof(eye_waypoints[0]);
-
-  //
+  tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
 
   anim_impl.setup = NULL;
   anim_impl.update = anim_update;
   // anim_impl.teardown = anim_teardown;
   anim_impl.teardown = NULL;
-  animation_init(&anim);
-  animation_set_delay(&anim, 500); // slow version: 1000
-  animation_set_duration(&anim, 500); // slow version: 3000
-  animation_set_implementation(&anim, &anim_impl);
+  anim = animation_create();
+  animation_set_delay(anim, (FEZ_SLOW_VERSION? 1000 : 500));
+  animation_set_duration(anim, (FEZ_SLOW_VERSION? 3000 : 500));
+  animation_set_implementation(anim, &anim_impl);
 
-  animation_set_handlers(&anim, (AnimationHandlers) {
+  animation_set_handlers(anim, (AnimationHandlers) {
     .stopped = (AnimationStoppedHandler)anim_stopped,
   }, NULL);
 
@@ -329,31 +316,43 @@ void handle_init(AppContextRef ctx)
 
   //
 
-  poly_layer_init(&digits[0], GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, 45, 0));
-  layer_add_child(&window.layer, &digits[0].layer);
-  poly_layer_init(&digits[1], GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, 45, 0));
-  layer_add_child(&window.layer, &digits[1].layer);
-  poly_layer_init(&digits[2], GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, -45, 0));
-  layer_add_child(&window.layer, &digits[2].layer);
-  poly_layer_init(&digits[3], GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, -45, 0));
-  layer_add_child(&window.layer, &digits[3].layer);
+  Layer *root_layer = window_get_root_layer(window);
+  digits[0] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, 45, 0));
+  layer_add_child(root_layer, digits[0]);
+  digits[1] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, 45, 0));
+  layer_add_child(root_layer, digits[1]);
+  digits[2] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, -45, 0));
+  layer_add_child(root_layer, digits[2]);
+  digits[3] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, -45, 0));
+  layer_add_child(root_layer, digits[3]);
 
   // Ensures time is displayed immediately (will break if NULL tick event accessed).
   // (This is why it's a good idea to have a separate routine to do the update itself.)
-  handle_minute_tick(ctx, NULL);
+
+  eye = eye_waypoints[0];
+  at = Vec3(0, 0, 0);
+  up = Vec3(0, 1, 0);
+  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  eye_to_idx = 0;
+
+  time_t timestamp = time(NULL);
+  struct tm *time = localtime(&timestamp);
+  handle_minute_tick(time, MINUTE_UNIT);
 }
 
-void pbl_main(void *params)
-{
-  PebbleAppHandlers handlers = {
-    .init_handler = &handle_init,
+void handle_deinit(void) {
+  animation_destroy(anim);
+  for (int i = 0; i < NUM_DIGITS; i++) {
+    layer_destroy(digits[i]);
+  }
+  for (int i = 0; i < 10; i++) {
 
-    // Handle time updates
-    .tick_info = {
-      .tick_handler = &handle_minute_tick,
-      .tick_units = MINUTE_UNIT
-    }
+  }
+  window_destroy(window);
+}
 
-  };
-  app_event_loop(params, &handlers);
+int main(void) {
+  handle_init();
+  app_event_loop();
+  handle_deinit();
 }
