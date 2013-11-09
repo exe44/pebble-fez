@@ -4,6 +4,7 @@
 
 #define FEZ_SLOW_VERSION 0
 #define POLY_SCALE 1.4f
+#define NUM_DIGITS 4
 
 Window* window;
 Mat4 view_matrix;
@@ -89,6 +90,7 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
 
   int prev_vertex_idx = -1;
   int vertex_idx = -1;
+  graphics_context_set_stroke_color(ctx, GColorWhite);
 
   for (int i = 0; i < poly->idx_num; ++i)
   {
@@ -116,6 +118,7 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
 
 PolyLayer *poly_layer_create(GSize size, Vec3 pos)
 {
+  
   PolyLayer *layer;
   PolyLayerData *data;
   
@@ -128,11 +131,13 @@ PolyLayer *poly_layer_create(GSize size, Vec3 pos)
   data->pos = pos;
 
   layer_set_update_proc(layer, poly_layer_update_proc);
+  
   return layer;
 }
 
 void poly_layer_set_poly_ref(PolyLayer *poly_layer, Poly* poly)
 {
+  
   ((PolyLayerData*)layer_get_data(poly_layer))->poly_ref = poly;
   layer_mark_dirty(poly_layer);
 }
@@ -140,7 +145,7 @@ void poly_layer_set_poly_ref(PolyLayer *poly_layer, Poly* poly)
 //==============================================================================
 
 Poly number_polys[10];
-PolyLayer *digits[4];
+PolyLayer *digits[NUM_DIGITS];
 
 #define MAKE_NUM_POLY(NUM) \
   poly_init(&number_polys[NUM]); \
@@ -164,7 +169,6 @@ Vec3 eye_waypoints[] = {
 
 Vec3 eye_from;
 int eye_to_idx;
-int eye_num;
 
 //==============================================================================
 
@@ -173,15 +177,17 @@ Animation *anim;
 
 void anim_update(struct Animation *animation, const uint32_t time_normalized)
 {
+  
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
   eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
   eye.y = eye_from.y * (1 - ratio) + eye_waypoints[eye_to_idx].y * ratio;
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
 
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < NUM_DIGITS; ++i)
   {
     layer_mark_dirty(digits[i]);
   }
+  
 }
 
 // void anim_teardown(struct Animation *animation)
@@ -193,10 +199,11 @@ void anim_stopped(struct Animation *animation, bool finished, void *context)
   eye = eye_waypoints[eye_to_idx];
   MatrixLookAtRH(&view_matrix, &eye, &at, &up);
 
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < NUM_DIGITS; ++i)
   {
     layer_mark_dirty(digits[i]);
   }
+  
 }
 
 //==============================================================================
@@ -265,12 +272,10 @@ void handle_minute_tick(struct tm *time, TimeUnits units_changed)
       animation_unschedule(anim);
 
     eye_from = eye;
-    eye_to_idx++;
-    if (eye_to_idx >= eye_num)
-      eye_to_idx = 0;
-
+    eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
     animation_schedule(anim);
   }
+  
 }
 
 void handle_init()
@@ -281,16 +286,6 @@ void handle_init()
 
   //
 
-  eye = eye_waypoints[0];
-  at = Vec3(0, 0, 0);
-  up = Vec3(0, 1, 0);
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
-
-  eye_to_idx = 0;
-  eye_num = sizeof(eye_waypoints) / sizeof(eye_waypoints[0]);
-
-  //
-
   tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
 
   anim_impl.setup = NULL;
@@ -298,17 +293,15 @@ void handle_init()
   // anim_impl.teardown = anim_teardown;
   anim_impl.teardown = NULL;
   anim = animation_create();
-  animation_set_delay(anim, (FEZ_SLOW_VERSION? 500 : 1000));
-  animation_set_duration(anim, (FEZ_SLOW_VERSION? 500 : 3000));
+  animation_set_delay(anim, (FEZ_SLOW_VERSION? 1000 : 500));
+  animation_set_duration(anim, (FEZ_SLOW_VERSION? 3000 : 500));
   animation_set_implementation(anim, &anim_impl);
 
   animation_set_handlers(anim, (AnimationHandlers) {
     .stopped = (AnimationStoppedHandler)anim_stopped,
   }, NULL);
 
-
   //
-
 
   MAKE_NUM_POLY(0)
   MAKE_NUM_POLY(1)
@@ -335,14 +328,26 @@ void handle_init()
 
   // Ensures time is displayed immediately (will break if NULL tick event accessed).
   // (This is why it's a good idea to have a separate routine to do the update itself.)
+
+  eye = eye_waypoints[0];
+  at = Vec3(0, 0, 0);
+  up = Vec3(0, 1, 0);
+  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  eye_to_idx = 0;
+
   time_t timestamp = time(NULL);
   struct tm *time = localtime(&timestamp);
   handle_minute_tick(time, MINUTE_UNIT);
 }
 
 void handle_deinit(void) {
-  // TODO: free polylayers?
   animation_destroy(anim);
+  for (int i = 0; i < NUM_DIGITS; i++) {
+    layer_destroy(digits[i]);
+  }
+  for (int i = 0; i < 10; i++) {
+
+  }
   window_destroy(window);
 }
 
