@@ -6,18 +6,25 @@
 #define POLY_SCALE 1.4f
 #define NUM_DIGITS 4
 
-Window* window;
-Mat4 view_matrix;
+static Window* window;
+static Mat4 view_matrix;
 
 //==============================================================================
 
 #define HALF_SCREEN_WIDTH 72
 #define HALF_SCREEN_HEIGHT 84
 
-void GetScreenCoordPos(GPoint* out_p, Vec3* v)
+static void ViewToScreenPos(GPoint* out_screen_pos, Vec3* view_pos)
 {
-  out_p->x = v->x + HALF_SCREEN_WIDTH;
-  out_p->y = HALF_SCREEN_HEIGHT - v->y;
+  out_screen_pos->x = view_pos->x + HALF_SCREEN_WIDTH;
+  out_screen_pos->y = HALF_SCREEN_HEIGHT - view_pos->y;
+}
+
+static void WorldToScreenPos(GPoint* out_screen_pos, Vec3* world_pos)
+{
+  Vec3 view_pos;
+  mat4_multiply_vec3(&view_pos, &view_matrix, world_pos);
+  ViewToScreenPos(out_screen_pos, &view_pos);
 }
 
 //==============================================================================
@@ -31,7 +38,7 @@ typedef struct Poly
   int idx_num;
 } Poly;
 
-void poly_init(Poly* poly)
+static void poly_init(Poly* poly)
 {
   poly->center = Vec3(0, 0, 0);
   poly->vertex_num = 0;
@@ -45,11 +52,10 @@ typedef struct PolyLayerData
   Poly* poly_ref;
   Vec3 pos;
 } PolyLayerData;
-typedef Layer PolyLayer;
 
-void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
+static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 {
-  PolyLayerData *data = layer_get_data(poly_layer);
+  PolyLayerData *data = layer_get_data(layer);
   Poly* poly = data->poly_ref;
 
   if (NULL == poly)
@@ -59,17 +65,15 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
 
   // get current layer pos (frame center) in screen coordinate
 
-  Vec3 center_view_pos;
-  mat4_multiply_vec3(&center_view_pos, &view_matrix, &data->pos);
   GPoint center_screen_pos;
-  GetScreenCoordPos(&center_screen_pos, &center_view_pos);
+  WorldToScreenPos(&center_screen_pos, &data->pos);
 
   // update frame
 
-  GRect frame = layer_get_frame(poly_layer);
+  GRect frame = layer_get_frame(layer);
   frame.origin.x = center_screen_pos.x - frame.size.w / 2;
   frame.origin.y = center_screen_pos.y - frame.size.h / 2;
-  layer_set_frame(poly_layer, frame);
+  layer_set_frame(layer, frame);
 
   // get poly's vertex pos in frame coordinate
 
@@ -81,7 +85,7 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
     vec3_plus(&world_pos, &data->pos, &model_pos);
     mat4_multiply_vec3(&view_pos, &view_matrix, &world_pos);
 
-    GetScreenCoordPos(&screen_poss[i], &view_pos);
+    ViewToScreenPos(&screen_poss[i], &view_pos);
     screen_poss[i].x = screen_poss[i].x - center_screen_pos.x + frame.size.w / 2;
     screen_poss[i].y = screen_poss[i].y - center_screen_pos.y + frame.size.h / 2;
   }
@@ -116,15 +120,15 @@ void poly_layer_update_proc(PolyLayer *poly_layer, GContext* ctx)
   }
 }
 
-PolyLayer *poly_layer_create(GSize size, Vec3 pos)
+static Layer* poly_layer_create(GSize size, Vec3 pos)
 {
-  
-  PolyLayer *layer;
+  Layer *layer;
   PolyLayerData *data;
   
   // pos is frame center
   GPoint screen_pos;
-  GetScreenCoordPos(&screen_pos, &pos);
+  WorldToScreenPos(&screen_pos, &pos);
+
   layer = layer_create_with_data(GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h), sizeof(PolyLayerData));
   data = layer_get_data(layer);
   data->poly_ref = NULL;
@@ -135,17 +139,16 @@ PolyLayer *poly_layer_create(GSize size, Vec3 pos)
   return layer;
 }
 
-void poly_layer_set_poly_ref(PolyLayer *poly_layer, Poly* poly)
+static void poly_layer_set_poly_ref(Layer *layer, Poly* poly)
 {
-  
-  ((PolyLayerData*)layer_get_data(poly_layer))->poly_ref = poly;
-  layer_mark_dirty(poly_layer);
+  ((PolyLayerData*)layer_get_data(layer))->poly_ref = poly;
+  layer_mark_dirty(layer);
 }
 
 //==============================================================================
 
-Poly number_polys[10];
-PolyLayer *digits[NUM_DIGITS];
+static Poly number_polys[10];
+static Layer* digits[NUM_DIGITS];
 
 #define MAKE_NUM_POLY(NUM) \
   poly_init(&number_polys[NUM]); \
@@ -158,26 +161,25 @@ PolyLayer *digits[NUM_DIGITS];
 //==============================================================================
 // camera
 
-Vec3 eye, at, up;
+static Vec3 eye, at, up;
 
-Vec3 eye_waypoints[] = {
+static Vec3 eye_waypoints[] = {
   { 1, 1, 1 },
   { 1, -1, 1 },
   { -1, -1, 1 },
   { -1, 1, 1 }
 };
 
-Vec3 eye_from;
-int eye_to_idx;
+static Vec3 eye_from;
+static int eye_to_idx;
 
 //==============================================================================
 
-AnimationImplementation anim_impl;
-Animation *anim;
+static AnimationImplementation anim_impl;
+static Animation* anim;
 
-void anim_update(struct Animation *animation, const uint32_t time_normalized)
+static void anim_update(struct Animation* animation, const uint32_t time_normalized)
 {
-  
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
   eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
   eye.y = eye_from.y * (1 - ratio) + eye_waypoints[eye_to_idx].y * ratio;
@@ -187,11 +189,10 @@ void anim_update(struct Animation *animation, const uint32_t time_normalized)
   {
     layer_mark_dirty(digits[i]);
   }
-  
 }
 
-// void anim_teardown(struct Animation *animation)
-void anim_stopped(struct Animation *animation, bool finished, void *context)
+// void anim_teardown(struct Animation* animation)
+static void anim_stopped(struct Animation* animation, bool finished, void *context)
 {
   if (!finished)
     return;
@@ -203,15 +204,14 @@ void anim_stopped(struct Animation *animation, bool finished, void *context)
   {
     layer_mark_dirty(digits[i]);
   }
-  
 }
 
 //==============================================================================
 
-int current_hr = -1;
-int current_min = -1;
+static int current_hr = -1;
+static int current_min = -1;
 
-int calculate_12_format(int hr)
+static int calculate_12_format(int hr)
 {
   if (hr == 0) hr += 12;
   if (hr > 12) hr -= 12;
@@ -219,7 +219,7 @@ int calculate_12_format(int hr)
 }
 
 // Called once per minute
-void handle_minute_tick(struct tm *time, TimeUnits units_changed)
+static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 {
   int hr = clock_is_24h_style() ? time->tm_hour : calculate_12_format(time->tm_hour);
 
@@ -275,31 +275,21 @@ void handle_minute_tick(struct tm *time, TimeUnits units_changed)
     eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
     animation_schedule(anim);
   }
-  
 }
 
-void handle_init()
+//==============================================================================
+
+static void window_load(Window* window)
 {
-  window = window_create();
-  window_stack_push(window, true);
-  window_set_background_color(window, GColorBlack);
+  // GRect bounds = layer_get_bounds(window_layer);
 
-  //
+  // view_matrix should be ready before poly layer creation
 
-  tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
-
-  anim_impl.setup = NULL;
-  anim_impl.update = anim_update;
-  // anim_impl.teardown = anim_teardown;
-  anim_impl.teardown = NULL;
-  anim = animation_create();
-  animation_set_delay(anim, (FEZ_SLOW_VERSION? 1000 : 500));
-  animation_set_duration(anim, (FEZ_SLOW_VERSION? 3000 : 500));
-  animation_set_implementation(anim, &anim_impl);
-
-  animation_set_handlers(anim, (AnimationHandlers) {
-    .stopped = (AnimationStoppedHandler)anim_stopped,
-  }, NULL);
+  eye = eye_waypoints[0];
+  at = Vec3(0, 0, 0);
+  up = Vec3(0, 1, 0);
+  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  eye_to_idx = 0;
 
   //
 
@@ -326,32 +316,54 @@ void handle_init()
   digits[3] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, -45, 0));
   layer_add_child(root_layer, digits[3]);
 
-  // Ensures time is displayed immediately (will break if NULL tick event accessed).
-  // (This is why it's a good idea to have a separate routine to do the update itself.)
+  //
 
-  eye = eye_waypoints[0];
-  at = Vec3(0, 0, 0);
-  up = Vec3(0, 1, 0);
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
-  eye_to_idx = 0;
+  anim_impl.setup = NULL;
+  anim_impl.update = anim_update;
+  // anim_impl.teardown = anim_teardown;
+  anim_impl.teardown = NULL;
+  anim = animation_create();
+  animation_set_delay(anim, (FEZ_SLOW_VERSION? 1000 : 500));
+  animation_set_duration(anim, (FEZ_SLOW_VERSION? 3000 : 500));
+  animation_set_implementation(anim, &anim_impl);
 
-  time_t timestamp = time(NULL);
-  struct tm *time = localtime(&timestamp);
-  handle_minute_tick(time, MINUTE_UNIT);
+  animation_set_handlers(anim, (AnimationHandlers) {
+    .stopped = (AnimationStoppedHandler)anim_stopped,
+  }, NULL);
 }
 
-void handle_deinit(void) {
+static void window_unload(Window *window)
+{
   animation_destroy(anim);
-  for (int i = 0; i < NUM_DIGITS; i++) {
+
+  for (int i = 0; i < NUM_DIGITS; i++)
+  {
     layer_destroy(digits[i]);
   }
-  for (int i = 0; i < 10; i++) {
+}
 
-  }
+//==============================================================================
+
+static void handle_init()
+{
+  window = window_create();
+  window_set_background_color(window, GColorBlack);
+  window_set_window_handlers(window, (WindowHandlers) {
+    .load = window_load,
+    .unload = window_unload,
+  });
+  window_stack_push(window, true);
+
+  tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
+}
+
+static void handle_deinit(void)
+{
   window_destroy(window);
 }
 
-int main(void) {
+int main(void)
+{
   handle_init();
   app_event_loop();
   handle_deinit();
