@@ -330,6 +330,12 @@ static void window_load(Window* window)
   animation_set_handlers(anim, (AnimationHandlers) {
     .stopped = (AnimationStoppedHandler)anim_stopped,
   }, NULL);
+
+  // Ensures time is displayed immediately
+
+  time_t timestamp = time(NULL);
+  struct tm *time = localtime(&timestamp);
+  handle_minute_tick(time, MINUTE_UNIT);
 }
 
 static void window_unload(Window *window)
