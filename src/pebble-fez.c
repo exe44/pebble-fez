@@ -3,6 +3,8 @@
 #include "poly_data.h"
 
 #define FEZ_SLOW_VERSION 0
+#define FG_COLOR GColorWhite
+#define BG_COLOR GColorBlack
 #define POLY_SCALE 1.4f
 #define NUM_DIGITS 4
 
@@ -94,7 +96,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 
   int prev_vertex_idx = -1;
   int vertex_idx = -1;
-  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_stroke_color(ctx, FG_COLOR);
 
   for (int i = 0; i < poly->idx_num; ++i)
   {
@@ -353,7 +355,7 @@ static void window_unload(Window *window)
 static void handle_init()
 {
   window = window_create();
-  window_set_background_color(window, GColorBlack);
+  window_set_background_color(window, BG_COLOR);
   window_set_window_handlers(window, (WindowHandlers) {
     .load = window_load,
     .unload = window_unload,
