@@ -1,9 +1,13 @@
 pebble watch face inspired by the logo of wonderful game "[FEZ](http://fezgame.com/)"!
 
-![screenshot](https://assets.rebble.io/144x168/filters:upscale()/5NxIHhewSLGdj8HsY3mJ)
+![pebble-fez](https://user-images.githubusercontent.com/158320/177231014-a57d8be7-8365-4556-a1a7-4eac3cb373e1.jpg)
 
-[see the animation!](https://vine.co/v/bFYL3v2znB7)
+https://user-images.githubusercontent.com/158320/177231264-657d05bc-3842-4868-8295-6872371aaf27.mp4
 
-[download .pbw](https://dl.dropboxusercontent.com/u/203504/pebble-fez.pbw)  
-[download .pbw (slow animation)](https://dl.dropboxusercontent.com/u/203504/pebble-fez-slow.pbw)  
-[download .pbw (white)](https://dl.dropboxusercontent.com/u/203504/pebble-fez-white.pbw)  
+
+
+[download .pbw](https://github.com/exe44/pebble-fez/files/9042590/pebble-fez.pbw.zip)
+
+[download .pbw (slow animation)](https://github.com/exe44/pebble-fez/files/9042595/pebble-fez-slow.pbw.zip)
+
+[download .pbw (white)](https://github.com/exe44/pebble-fez/files/9042596/pebble-fez-white.pbw.zip)
