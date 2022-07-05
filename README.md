@@ -11,3 +11,5 @@ https://user-images.githubusercontent.com/158320/177231264-657d05bc-3842-4868-82
 [download .pbw (slow animation)](https://github.com/exe44/pebble-fez/files/9042595/pebble-fez-slow.pbw.zip)
 
 [download .pbw (white)](https://github.com/exe44/pebble-fez/files/9042596/pebble-fez-white.pbw.zip)
+
+[get from rebble](https://apps.rebble.io/application/5299a7e6e627ce615300006f)
