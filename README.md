@@ -6,11 +6,7 @@ Pebble watch face inspired by the logo of wonderful game "[FEZ](http://fezgame.c
 
 https://user-images.githubusercontent.com/158320/177231264-657d05bc-3842-4868-8295-6872371aaf27.mp4
 
-
-
 [GitHub Releases](https://github.com/exe44/pebble-fez/releases)
-
-[get from rebble](https://apps.rebble.io/application/5299a7e6e627ce615300006f)
 
 ## Build
 
