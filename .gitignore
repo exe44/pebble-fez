@@ -7,14 +7,11 @@ Thumbs.db
 .lock-waf*
 
 # Build products
-build/*
-# Do upload finished binaries
-!build/*.pbw
+build/
 
 
-# Ignore linked files/directories
+# Ignore old linked SDK project files/directories
 waf
-wscript
 tools
 include
 lib

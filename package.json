@@ -1,0 +1,23 @@
+{
+  "name": "pebble-fez",
+  "author": "exe",
+  "version": "2.1.0",
+  "keywords": ["pebble-app", "watchface"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "FEZ",
+    "uuid": "ce863abc-d990-412b-b177-632bb7951c12",
+    "sdkVersion": "3",
+    "targetPlatforms": [
+      "aplite",
+      "basalt"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": []
+    }
+  }
+}

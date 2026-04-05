@@ -180,7 +180,7 @@ static int eye_to_idx;
 static AnimationImplementation anim_impl;
 static Animation* anim;
 
-static void anim_update(struct Animation* animation, const uint32_t time_normalized)
+static void anim_update(struct Animation* animation, const AnimationProgress time_normalized)
 {
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
   eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
