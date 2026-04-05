@@ -40,3 +40,8 @@ pebble install --phone <ip>
 
 - aplite
 - basalt
+- chalk
+- diorite
+- emery
+- flint
+- gabbro

@@ -5,21 +5,48 @@
 #define FEZ_SLOW_VERSION 0
 #define FG_COLOR GColorWhite
 #define BG_COLOR GColorBlack
-#define POLY_SCALE 1.4f
 #define NUM_DIGITS 4
 
 static Window* window;
 static Mat4 view_matrix;
+static GPoint screen_center;
+static float poly_scale;
+static GSize digit_layer_size;
+static Vec3 digit_positions[NUM_DIGITS];
 
 //==============================================================================
 
-#define HALF_SCREEN_WIDTH 72
-#define HALF_SCREEN_HEIGHT 84
+static int round_to_int(float value)
+{
+  return (int)(value + (value >= 0 ? 0.5f : -0.5f));
+}
+
+static void configure_layout(GRect bounds)
+{
+  const float width_scale = (float)bounds.size.w / 144.0f;
+  const float height_scale = (float)bounds.size.h / 168.0f;
+  float layout_scale = width_scale < height_scale ? width_scale : height_scale;
+#ifdef PBL_ROUND
+  layout_scale *= 0.8f;
+#endif
+
+  poly_scale = 1.4f * layout_scale;
+  screen_center = grect_center_point(&bounds);
+
+  digit_layer_size = GSize(round_to_int(40.0f * poly_scale), round_to_int(50.0f * poly_scale));
+
+  const float digit_offset_x = 40.0f * layout_scale;
+  const float digit_offset_y = 45.0f * layout_scale;
+  digit_positions[0] = Vec3(-digit_offset_x, digit_offset_y, 0);
+  digit_positions[1] = Vec3(digit_offset_x, digit_offset_y, 0);
+  digit_positions[2] = Vec3(-digit_offset_x, -digit_offset_y, 0);
+  digit_positions[3] = Vec3(digit_offset_x, -digit_offset_y, 0);
+}
 
 static void ViewToScreenPos(GPoint* out_screen_pos, Vec3* view_pos)
 {
-  out_screen_pos->x = view_pos->x + HALF_SCREEN_WIDTH;
-  out_screen_pos->y = HALF_SCREEN_HEIGHT - view_pos->y;
+  out_screen_pos->x = screen_center.x + round_to_int(view_pos->x);
+  out_screen_pos->y = screen_center.y - round_to_int(view_pos->y);
 }
 
 static void WorldToScreenPos(GPoint* out_screen_pos, Vec3* world_pos)
@@ -82,7 +109,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   Vec3 model_pos, scale_pos, world_pos, view_pos;
   for (int i = 0; i < poly->vertex_num; ++i)
   {
-    vec3_multiply(&scale_pos, &poly->vertexs[i], POLY_SCALE);
+    vec3_multiply(&scale_pos, &poly->vertexs[i], poly_scale);
     vec3_minus(&model_pos, &scale_pos, &poly->center);
     vec3_plus(&world_pos, &data->pos, &model_pos);
     mat4_multiply_vec3(&view_pos, &view_matrix, &world_pos);
@@ -154,7 +181,7 @@ static Layer* digits[NUM_DIGITS];
 
 #define MAKE_NUM_POLY(NUM) \
   poly_init(&number_polys[NUM]); \
-  number_polys[NUM].center = Vec3(15 * POLY_SCALE, 20 * POLY_SCALE, 6 * POLY_SCALE); \
+  number_polys[NUM].center = Vec3(15 * poly_scale, 20 * poly_scale, 6 * poly_scale); \
   number_polys[NUM].vertexs = vertexs_##NUM; \
   number_polys[NUM].vertex_num = sizeof(vertexs_##NUM) / sizeof(vertexs_##NUM[0]); \
   number_polys[NUM].idxs = idxs_##NUM; \
@@ -283,7 +310,9 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 
 static void window_load(Window* window)
 {
-  // GRect bounds = layer_get_bounds(window_layer);
+  Layer *root_layer = window_get_root_layer(window);
+  GRect bounds = layer_get_bounds(root_layer);
+  configure_layout(bounds);
 
   // view_matrix should be ready before poly layer creation
 
@@ -308,14 +337,13 @@ static void window_load(Window* window)
 
   //
 
-  Layer *root_layer = window_get_root_layer(window);
-  digits[0] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, 45, 0));
+  digits[0] = poly_layer_create(digit_layer_size, digit_positions[0]);
   layer_add_child(root_layer, digits[0]);
-  digits[1] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, 45, 0));
+  digits[1] = poly_layer_create(digit_layer_size, digit_positions[1]);
   layer_add_child(root_layer, digits[1]);
-  digits[2] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(-40, -45, 0));
+  digits[2] = poly_layer_create(digit_layer_size, digit_positions[2]);
   layer_add_child(root_layer, digits[2]);
-  digits[3] = poly_layer_create(GSize(40 * POLY_SCALE, 50 * POLY_SCALE), Vec3(40, -45, 0));
+  digits[3] = poly_layer_create(digit_layer_size, digit_positions[3]);
   layer_add_child(root_layer, digits[3]);
 
   //

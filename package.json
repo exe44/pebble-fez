@@ -2,7 +2,10 @@
   "name": "pebble-fez",
   "author": "exe",
   "version": "2.1.0",
-  "keywords": ["pebble-app", "watchface"],
+  "keywords": [
+    "pebble-app",
+    "watchface"
+  ],
   "private": true,
   "dependencies": {},
   "pebble": {
@@ -10,8 +13,13 @@
     "uuid": "ce863abc-d990-412b-b177-632bb7951c12",
     "sdkVersion": "3",
     "targetPlatforms": [
+      "diorite",
+      "flint",
       "aplite",
-      "basalt"
+      "chalk",
+      "basalt",
+      "gabbro",
+      "emery"
     ],
     "watchapp": {
       "watchface": true
