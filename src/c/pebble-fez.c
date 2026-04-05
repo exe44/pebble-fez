@@ -207,6 +207,19 @@ static int eye_to_idx;
 static AnimationImplementation anim_impl;
 static Animation* anim;
 
+static void anim_stopped(struct Animation* animation, bool finished, void *context);
+
+static void create_animation(void)
+{
+  anim = animation_create();
+  animation_set_delay(anim, (FEZ_SLOW_VERSION ? 1000 : 500));
+  animation_set_duration(anim, (FEZ_SLOW_VERSION ? 3000 : 500));
+  animation_set_implementation(anim, &anim_impl);
+  animation_set_handlers(anim, (AnimationHandlers) {
+    .stopped = (AnimationStoppedHandler)anim_stopped,
+  }, NULL);
+}
+
 static void anim_update(struct Animation* animation, const AnimationProgress time_normalized)
 {
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
@@ -232,6 +245,12 @@ static void anim_stopped(struct Animation* animation, bool finished, void *conte
   for (int i = 0; i < NUM_DIGITS; ++i)
   {
     layer_mark_dirty(digits[i]);
+  }
+
+  animation_destroy(animation);
+  if (anim == animation)
+  {
+    anim = NULL;
   }
 }
 
@@ -297,8 +316,15 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 
     // start camera move animation
 
-    if (animation_is_scheduled(anim))
+    if (anim != NULL && animation_is_scheduled(anim))
+    {
       animation_unschedule(anim);
+    }
+
+    if (anim == NULL)
+    {
+      create_animation();
+    }
 
     eye_from = eye;
     eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
@@ -352,14 +378,7 @@ static void window_load(Window* window)
   anim_impl.update = anim_update;
   // anim_impl.teardown = anim_teardown;
   anim_impl.teardown = NULL;
-  anim = animation_create();
-  animation_set_delay(anim, (FEZ_SLOW_VERSION? 1000 : 500));
-  animation_set_duration(anim, (FEZ_SLOW_VERSION? 3000 : 500));
-  animation_set_implementation(anim, &anim_impl);
-
-  animation_set_handlers(anim, (AnimationHandlers) {
-    .stopped = (AnimationStoppedHandler)anim_stopped,
-  }, NULL);
+  anim = NULL;
 
   // Ensures time is displayed immediately
 
@@ -370,7 +389,12 @@ static void window_load(Window* window)
 
 static void window_unload(Window *window)
 {
-  animation_destroy(anim);
+  if (anim != NULL)
+  {
+    animation_unschedule(anim);
+    animation_destroy(anim);
+    anim = NULL;
+  }
 
   for (int i = 0; i < NUM_DIGITS; i++)
   {
