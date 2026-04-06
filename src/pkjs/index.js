@@ -7,16 +7,27 @@ var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
 var current_config_mode = 'clay';
 
 function sanitize_settings(settings) {
-  if (settings.SETTING_FG_COLOR !== 0 && settings.SETTING_FG_COLOR !== 1) {
-    settings.SETTING_FG_COLOR = 1;
+  if (!isFinite(settings.SETTING_FG_COLOR)) {
+    settings.SETTING_FG_COLOR = 0xFFFFFF;
   }
 
-  if (settings.SETTING_BG_COLOR !== 0 && settings.SETTING_BG_COLOR !== 1) {
-    settings.SETTING_BG_COLOR = 0;
+  if (!isFinite(settings.SETTING_BG_COLOR)) {
+    settings.SETTING_BG_COLOR = 0x000000;
   }
+
+  if (settings.SETTING_FG_COLOR === 0 || settings.SETTING_FG_COLOR === 1) {
+    settings.SETTING_FG_COLOR = settings.SETTING_FG_COLOR === 0 ? 0x000000 : 0xFFFFFF;
+  }
+
+  if (settings.SETTING_BG_COLOR === 0 || settings.SETTING_BG_COLOR === 1) {
+    settings.SETTING_BG_COLOR = settings.SETTING_BG_COLOR === 0 ? 0x000000 : 0xFFFFFF;
+  }
+
+  settings.SETTING_FG_COLOR = settings.SETTING_FG_COLOR & 0xFFFFFF;
+  settings.SETTING_BG_COLOR = settings.SETTING_BG_COLOR & 0xFFFFFF;
 
   if (settings.SETTING_FG_COLOR === settings.SETTING_BG_COLOR) {
-    settings.SETTING_BG_COLOR = settings.SETTING_FG_COLOR === 0 ? 1 : 0;
+    settings.SETTING_BG_COLOR = settings.SETTING_FG_COLOR === 0x000000 ? 0xFFFFFF : 0x000000;
   }
 
   settings.SETTING_SLOW_VERSION = settings.SETTING_SLOW_VERSION ? 1 : 0;
@@ -26,6 +37,22 @@ function sanitize_settings(settings) {
 
 function is_emulator() {
   return typeof Pebble === 'undefined' || Pebble.platform === 'pypkjs';
+}
+
+function get_emulator_palette_mode() {
+  var watch_info = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
+  var platform = watch_info && watch_info.platform;
+  var firmware = watch_info && watch_info.firmware;
+
+  if (firmware && firmware.major === 2) {
+    return 'bw';
+  }
+
+  if (platform === 'aplite' || platform === 'diorite' || platform === 'flint') {
+    return 'bw';
+  }
+
+  return 'color';
 }
 
 function load_saved_settings() {
@@ -69,7 +96,7 @@ Pebble.addEventListener('showConfiguration', function() {
 
   if (is_emulator()) {
     current_config_mode = 'emulator';
-    Pebble.openURL(buildEmulatorConfigUrl(saved_settings));
+    Pebble.openURL(buildEmulatorConfigUrl(saved_settings, get_emulator_palette_mode()));
     return;
   }
 

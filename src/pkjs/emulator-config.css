@@ -47,14 +47,29 @@ label {
   color: #78716c;
 }
 
-select {
+.palette {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.palette-button {
   width: 100%;
-  padding: 12px;
-  font: inherit;
-  color: #171717;
-  background: #fff;
-  border: 1px solid #d6d3d1;
-  border-radius: 12px;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  background: var(--swatch);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.palette-button.selected {
+  outline: 3px solid #171717;
+  outline-offset: 2px;
+}
+
+.palette.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .toggle {

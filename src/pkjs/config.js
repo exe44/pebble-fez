@@ -19,36 +19,20 @@ module.exports = [
         defaultValue: false
       },
       {
-        type: 'select',
+        type: 'color',
         messageKey: 'SETTING_FG_COLOR',
         label: 'Foreground color',
-        defaultValue: '1',
-        options: [
-          {
-            label: 'White',
-            value: '1'
-          },
-          {
-            label: 'Black',
-            value: '0'
-          }
-        ]
+        defaultValue: 'ffffff',
+        allowGray: true,
+        description: 'On color watches this shows the Pebble color palette. Black-and-white platforms automatically fall back to their supported colors.'
       },
       {
-        type: 'select',
+        type: 'color',
         messageKey: 'SETTING_BG_COLOR',
         label: 'Background color',
-        defaultValue: '0',
-        options: [
-          {
-            label: 'Black',
-            value: '0'
-          },
-          {
-            label: 'White',
-            value: '1'
-          }
-        ]
+        defaultValue: '000000',
+        allowGray: true,
+        description: 'On color watches this shows the Pebble color palette. Black-and-white platforms automatically fall back to their supported colors.'
       }
     ]
   },

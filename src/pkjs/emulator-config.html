@@ -9,7 +9,7 @@
   <body>
     <div class="wrap">
       <h1>FEZ Settings</h1>
-      <p>Adjust animation speed and the monochrome color pairing used by the watchface.</p>
+      <p>Adjust animation speed and preview the platform palette used by the watchface.</p>
 
       <div class="card">
         <label class="toggle">
@@ -21,18 +21,14 @@
 
       <div class="card">
         <label for="fg">Foreground color</label>
-        <select id="fg">
-          <option value="1">White</option>
-          <option value="0">Black</option>
-        </select>
+        <div id="fg-palette" class="palette"></div>
+        <div class="hint" id="fg-hint">Choose a Pebble-supported color.</div>
       </div>
 
       <div class="card">
         <label for="bg">Background color</label>
-        <select id="bg">
-          <option value="0">Black</option>
-          <option value="1">White</option>
-        </select>
+        <div id="bg-palette" class="palette"></div>
+        <div class="hint" id="bg-hint">Choose a Pebble-supported color.</div>
       </div>
 
       <button id="save" type="button">Save</button>

@@ -7,17 +7,11 @@
 #define PERSIST_KEY_FG_COLOR 2
 #define PERSIST_KEY_BG_COLOR 3
 
-enum
-{
-  SETTING_COLOR_BLACK = 0,
-  SETTING_COLOR_WHITE = 1
-};
-
 typedef struct AppSettings
 {
   bool slow_version;
-  uint8_t fg_color;
-  uint8_t bg_color;
+  int32_t fg_color;
+  int32_t bg_color;
 } AppSettings;
 
 static Window* window;
@@ -137,7 +131,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 
   int prev_vertex_idx = -1;
   int vertex_idx = -1;
-  graphics_context_set_stroke_color(ctx, settings.fg_color == SETTING_COLOR_BLACK ? GColorBlack : GColorWhite);
+  graphics_context_set_stroke_color(ctx, GColorFromHEX(settings.fg_color));
 
   for (int i = 0; i < poly->idx_num; ++i)
   {
@@ -276,27 +270,35 @@ static void anim_stopped(struct Animation* animation, bool finished, void *conte
 static int current_hr = -1;
 static int current_min = -1;
 
+static GColor get_foreground_color(void)
+{
+  return GColorFromHEX(settings.fg_color);
+}
+
 static void sanitize_settings(void)
 {
-  if (settings.fg_color > SETTING_COLOR_WHITE)
+  if (settings.fg_color == 0 || settings.fg_color == 1)
   {
-    settings.fg_color = SETTING_COLOR_WHITE;
+    settings.fg_color = settings.fg_color == 0 ? 0x000000 : 0xFFFFFF;
   }
 
-  if (settings.bg_color > SETTING_COLOR_WHITE)
+  if (settings.bg_color == 0 || settings.bg_color == 1)
   {
-    settings.bg_color = SETTING_COLOR_BLACK;
+    settings.bg_color = settings.bg_color == 0 ? 0x000000 : 0xFFFFFF;
   }
 
-  if (settings.fg_color == settings.bg_color)
+  settings.fg_color &= 0xFFFFFF;
+  settings.bg_color &= 0xFFFFFF;
+
+  if (gcolor_equal(get_foreground_color(), GColorFromHEX(settings.bg_color)))
   {
-    settings.bg_color = settings.fg_color == SETTING_COLOR_BLACK ? SETTING_COLOR_WHITE : SETTING_COLOR_BLACK;
+    settings.bg_color = gcolor_equal(get_foreground_color(), GColorBlack) ? 0xFFFFFF : 0x000000;
   }
 }
 
 static GColor get_background_color(void)
 {
-  return settings.bg_color == SETTING_COLOR_WHITE ? GColorWhite : GColorBlack;
+  return GColorFromHEX(settings.bg_color);
 }
 
 static void apply_visual_settings(void)
@@ -322,8 +324,8 @@ static void apply_visual_settings(void)
 static void load_settings(void)
 {
   settings.slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : false;
-  settings.fg_color = persist_exists(PERSIST_KEY_FG_COLOR) ? (uint8_t)persist_read_int(PERSIST_KEY_FG_COLOR) : SETTING_COLOR_WHITE;
-  settings.bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? (uint8_t)persist_read_int(PERSIST_KEY_BG_COLOR) : SETTING_COLOR_BLACK;
+  settings.fg_color = persist_exists(PERSIST_KEY_FG_COLOR) ? persist_read_int(PERSIST_KEY_FG_COLOR) : 0xFFFFFF;
+  settings.bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : 0x000000;
   sanitize_settings();
 }
 
@@ -347,12 +349,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 
   if (fg_tuple != NULL)
   {
-    settings.fg_color = (uint8_t)fg_tuple->value->uint8;
+    settings.fg_color = fg_tuple->value->int32;
   }
 
   if (bg_tuple != NULL)
   {
-    settings.bg_color = (uint8_t)bg_tuple->value->uint8;
+    settings.bg_color = bg_tuple->value->int32;
   }
 
   sanitize_settings();
