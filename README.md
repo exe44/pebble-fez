@@ -13,10 +13,13 @@ https://user-images.githubusercontent.com/158320/177231264-657d05bc-3842-4868-82
 This project now uses the modern Pebble project layout with `package.json` and `wscript`.
 
 ```sh
+npm install
 pebble build
 ```
 
 The compiled bundle will be generated at `build/pebble-fez.pbw`.
+
+If this is your first checkout or `package.json` / `package-lock.json` changed, run `npm install` before building to install the JavaScript dependencies used by the configuration page.
 
 ## Install
 

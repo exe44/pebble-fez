@@ -8,6 +8,7 @@ Thumbs.db
 
 # Build products
 build/
+node_modules/
 
 
 # Ignore old linked SDK project files/directories
@@ -19,6 +20,7 @@ pebble_app.ld
 
 # Ignore other generated files
 serial_dump.txt
+src/pkjs/emulator-config-template.auto.js
 
 # Xcode
 *.pbxuser

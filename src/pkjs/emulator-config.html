@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FEZ Settings</title>
+    <style>__EMULATOR_CONFIG_CSS__</style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>FEZ Settings</h1>
+      <p>Adjust animation speed and the monochrome color pairing used by the watchface.</p>
+
+      <div class="card">
+        <label class="toggle">
+          <input id="slow" type="checkbox">
+          <span>Slow animation</span>
+        </label>
+        <div class="hint">Use the original longer camera transition timing.</div>
+      </div>
+
+      <div class="card">
+        <label for="fg">Foreground color</label>
+        <select id="fg">
+          <option value="1">White</option>
+          <option value="0">Black</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <label for="bg">Background color</label>
+        <select id="bg">
+          <option value="0">Black</option>
+          <option value="1">White</option>
+        </select>
+      </div>
+
+      <button id="save" type="button">Save</button>
+    </div>
+
+    <script>__EMULATOR_CONFIG_JS__</script>
+  </body>
+</html>

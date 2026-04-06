@@ -1,3 +1,4 @@
+import json
 import os.path
 
 top = '.'
@@ -12,8 +13,33 @@ def configure(ctx):
     ctx.load('pebble_sdk')
 
 
+def _generate_emulator_config_template():
+    html_path = 'src/pkjs/emulator-config.html'
+    css_path = 'src/pkjs/emulator-config.css'
+    js_path = 'src/pkjs/emulator-config-page.js'
+    output_path = 'src/pkjs/emulator-config-template.auto.js'
+
+    with open(html_path, 'r') as html_file:
+        html = html_file.read()
+
+    with open(css_path, 'r') as css_file:
+        css = css_file.read()
+
+    with open(js_path, 'r') as js_file:
+        js = js_file.read()
+
+    template = html.replace('__EMULATOR_CONFIG_CSS__', css)
+    template = template.replace('__EMULATOR_CONFIG_JS__', js)
+
+    output = 'module.exports = ' + json.dumps(template) + ';\n'
+
+    with open(output_path, 'w') as output_file:
+        output_file.write(output)
+
+
 def build(ctx):
     ctx.load('pebble_sdk')
+    _generate_emulator_config_template()
 
     binaries = []
     cached_env = ctx.env
@@ -28,4 +54,11 @@ def build(ctx):
     ctx.env = cached_env
 
     ctx.set_group('bundle')
-    ctx.pbl_bundle(binaries=binaries)
+    ctx.pbl_bundle(
+        binaries=binaries,
+        js=ctx.path.ant_glob([
+            'src/pkjs/**/*.js',
+            'src/pkjs/**/*.json',
+            'src/common/**/*.js',
+        ]),
+        js_entry_file='src/pkjs/index.js')

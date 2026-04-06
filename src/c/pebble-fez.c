@@ -2,10 +2,23 @@
 #include "math_helper.h"
 #include "poly_data.h"
 
-#define FEZ_SLOW_VERSION 0
-#define FG_COLOR GColorWhite
-#define BG_COLOR GColorBlack
 #define NUM_DIGITS 4
+#define PERSIST_KEY_SLOW_VERSION 1
+#define PERSIST_KEY_FG_COLOR 2
+#define PERSIST_KEY_BG_COLOR 3
+
+enum
+{
+  SETTING_COLOR_BLACK = 0,
+  SETTING_COLOR_WHITE = 1
+};
+
+typedef struct AppSettings
+{
+  bool slow_version;
+  uint8_t fg_color;
+  uint8_t bg_color;
+} AppSettings;
 
 static Window* window;
 static Mat4 view_matrix;
@@ -13,6 +26,7 @@ static GPoint screen_center;
 static float poly_scale;
 static GSize digit_layer_size;
 static Vec3 digit_positions[NUM_DIGITS];
+static AppSettings settings;
 
 //==============================================================================
 
@@ -123,7 +137,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 
   int prev_vertex_idx = -1;
   int vertex_idx = -1;
-  graphics_context_set_stroke_color(ctx, FG_COLOR);
+  graphics_context_set_stroke_color(ctx, settings.fg_color == SETTING_COLOR_BLACK ? GColorBlack : GColorWhite);
 
   for (int i = 0; i < poly->idx_num; ++i)
   {
@@ -206,14 +220,17 @@ static int eye_to_idx;
 
 static AnimationImplementation anim_impl;
 static Animation* anim;
+extern uint32_t MESSAGE_KEY_SETTING_SLOW_VERSION;
+extern uint32_t MESSAGE_KEY_SETTING_FG_COLOR;
+extern uint32_t MESSAGE_KEY_SETTING_BG_COLOR;
 
 static void anim_stopped(struct Animation* animation, bool finished, void *context);
 
 static void create_animation(void)
 {
   anim = animation_create();
-  animation_set_delay(anim, (FEZ_SLOW_VERSION ? 1000 : 500));
-  animation_set_duration(anim, (FEZ_SLOW_VERSION ? 3000 : 500));
+  animation_set_delay(anim, (settings.slow_version ? 1000 : 500));
+  animation_set_duration(anim, (settings.slow_version ? 3000 : 500));
   animation_set_implementation(anim, &anim_impl);
   animation_set_handlers(anim, (AnimationHandlers) {
     .stopped = (AnimationStoppedHandler)anim_stopped,
@@ -258,6 +275,90 @@ static void anim_stopped(struct Animation* animation, bool finished, void *conte
 
 static int current_hr = -1;
 static int current_min = -1;
+
+static void sanitize_settings(void)
+{
+  if (settings.fg_color > SETTING_COLOR_WHITE)
+  {
+    settings.fg_color = SETTING_COLOR_WHITE;
+  }
+
+  if (settings.bg_color > SETTING_COLOR_WHITE)
+  {
+    settings.bg_color = SETTING_COLOR_BLACK;
+  }
+
+  if (settings.fg_color == settings.bg_color)
+  {
+    settings.bg_color = settings.fg_color == SETTING_COLOR_BLACK ? SETTING_COLOR_WHITE : SETTING_COLOR_BLACK;
+  }
+}
+
+static GColor get_background_color(void)
+{
+  return settings.bg_color == SETTING_COLOR_WHITE ? GColorWhite : GColorBlack;
+}
+
+static void apply_visual_settings(void)
+{
+  if (window == NULL)
+  {
+    return;
+  }
+
+  window_set_background_color(window, get_background_color());
+
+  if (digits[0] == NULL)
+  {
+    return;
+  }
+
+  for (int i = 0; i < NUM_DIGITS; ++i)
+  {
+    layer_mark_dirty(digits[i]);
+  }
+}
+
+static void load_settings(void)
+{
+  settings.slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : false;
+  settings.fg_color = persist_exists(PERSIST_KEY_FG_COLOR) ? (uint8_t)persist_read_int(PERSIST_KEY_FG_COLOR) : SETTING_COLOR_WHITE;
+  settings.bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? (uint8_t)persist_read_int(PERSIST_KEY_BG_COLOR) : SETTING_COLOR_BLACK;
+  sanitize_settings();
+}
+
+static void save_settings(void)
+{
+  persist_write_bool(PERSIST_KEY_SLOW_VERSION, settings.slow_version);
+  persist_write_int(PERSIST_KEY_FG_COLOR, settings.fg_color);
+  persist_write_int(PERSIST_KEY_BG_COLOR, settings.bg_color);
+}
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context)
+{
+  Tuple *slow_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SLOW_VERSION);
+  Tuple *fg_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FG_COLOR);
+  Tuple *bg_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_BG_COLOR);
+
+  if (slow_tuple != NULL)
+  {
+    settings.slow_version = slow_tuple->value->int32 != 0;
+  }
+
+  if (fg_tuple != NULL)
+  {
+    settings.fg_color = (uint8_t)fg_tuple->value->uint8;
+  }
+
+  if (bg_tuple != NULL)
+  {
+    settings.bg_color = (uint8_t)bg_tuple->value->uint8;
+  }
+
+  sanitize_settings();
+  save_settings();
+  apply_visual_settings();
+}
 
 static int calculate_12_format(int hr)
 {
@@ -406,14 +507,18 @@ static void window_unload(Window *window)
 
 static void handle_init()
 {
+  load_settings();
+
   window = window_create();
-  window_set_background_color(window, BG_COLOR);
+  window_set_background_color(window, get_background_color());
   window_set_window_handlers(window, (WindowHandlers) {
     .load = window_load,
     .unload = window_unload,
   });
   window_stack_push(window, true);
 
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_open(128, 128);
   tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
 }
 

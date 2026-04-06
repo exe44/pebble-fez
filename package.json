@@ -7,11 +7,22 @@
     "watchface"
   ],
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "@rebble/clay": "^1.0.8"
+  },
   "pebble": {
     "displayName": "FEZ",
     "uuid": "ce863abc-d990-412b-b177-632bb7951c12",
     "sdkVersion": "3",
+    "enableMultiJS": true,
+    "capabilities": [
+      "configurable"
+    ],
+    "messageKeys": {
+      "SETTING_SLOW_VERSION": 0,
+      "SETTING_FG_COLOR": 1,
+      "SETTING_BG_COLOR": 2
+    },
     "targetPlatforms": [
       "diorite",
       "flint",
