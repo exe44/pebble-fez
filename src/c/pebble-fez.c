@@ -6,16 +6,33 @@
 #define PERSIST_KEY_SLOW_VERSION 1
 #define PERSIST_KEY_FG_COLOR 2
 #define PERSIST_KEY_BG_COLOR 3
+#define PERSIST_KEY_LINE_COLOR_MODE 4
+#define PERSIST_KEY_FACE_COLOR_MODE 5
+#define PERSIST_KEY_ACCENT_COLOR 6
 #define MESSAGE_KEY_SETTING_SLOW_VERSION 0
 #define MESSAGE_KEY_SETTING_FG_COLOR 1
 #define MESSAGE_KEY_SETTING_BG_COLOR 2
+#define MESSAGE_KEY_SETTING_LINE_COLOR_MODE 3
+#define MESSAGE_KEY_SETTING_FACE_COLOR_MODE 4
+#define MESSAGE_KEY_SETTING_ACCENT_COLOR 5
 #define DIGIT_SHARED_POINT_COUNT ((int)ARRAY_LENGTH(digit_poly_points))
+
+typedef enum ColorMode
+{
+  COLOR_MODE_FOREGROUND = 0,
+  COLOR_MODE_BACKGROUND = 1,
+  COLOR_MODE_ACCENT = 2,
+  COLOR_MODE_MIXED = 3,
+} ColorMode;
 
 typedef struct AppSettings
 {
   bool slow_version;
   int32_t fg_color;
   int32_t bg_color;
+  int32_t accent_color;
+  int32_t line_color_mode;
+  int32_t face_color_mode;
 } AppSettings;
 
 static Window* window;
@@ -29,7 +46,11 @@ static Vec3 eye, at, up;
 
 static GColor get_foreground_color(void);
 static GColor get_background_color(void);
-static GColor get_fill_color(void);
+static GColor get_accent_color(void);
+static GColor get_mixed_color(void);
+static GColor get_color_for_mode(ColorMode mode);
+static GColor get_line_color(void);
+static GColor get_face_color(void);
 
 //==============================================================================
 
@@ -101,9 +122,8 @@ typedef struct ContourInfo
   uint8_t length;
 } ContourInfo;
 
-static GColor get_fill_color(void)
+static GColor get_mixed_color(void)
 {
-#ifdef PBL_COLOR
   uint32_t fg = settings.fg_color;
   uint32_t bg = settings.bg_color;
 
@@ -112,9 +132,37 @@ static GColor get_fill_color(void)
   uint8_t b = (((fg >> 0) & 0xFF) * 3 + ((bg >> 0) & 0xFF)) / 4;
 
   return GColorFromHEX((r << 16) | (g << 8) | b);
-#else
-  return get_foreground_color();
-#endif
+}
+
+static GColor get_accent_color(void)
+{
+  return GColorFromHEX(settings.accent_color);
+}
+
+static GColor get_color_for_mode(ColorMode mode)
+{
+  switch (mode)
+  {
+    case COLOR_MODE_BACKGROUND:
+      return get_background_color();
+    case COLOR_MODE_ACCENT:
+      return get_accent_color();
+    case COLOR_MODE_MIXED:
+      return get_mixed_color();
+    case COLOR_MODE_FOREGROUND:
+    default:
+      return get_foreground_color();
+  }
+}
+
+static GColor get_line_color(void)
+{
+  return get_color_for_mode((ColorMode)settings.line_color_mode);
+}
+
+static GColor get_face_color(void)
+{
+  return get_color_for_mode((ColorMode)settings.face_color_mode);
 }
 
 static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
@@ -203,7 +251,7 @@ static void draw_poly_fill(GContext *ctx, Poly *poly, const PolyLayerData *data,
   const DigitPolyData *poly_data = poly->poly_data;
   int contour_num = parse_front_contours(poly_data, contours);
   int back_offset = DIGIT_SHARED_POINT_COUNT;
-  GColor fill_color = get_fill_color();
+  GColor fill_color = get_face_color();
 
   for (int i = 0; i < poly_data->solid_poly_count; ++i)
   {
@@ -264,7 +312,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   draw_poly_fill(ctx, poly, data, center_screen_pos, frame.size, screen_poss, world_poss);
 
   // draw wireframe from front/back contours plus connecting edges
-  graphics_context_set_stroke_color(ctx, get_foreground_color());
+  graphics_context_set_stroke_color(ctx, get_line_color());
   for (int i = 0; i < poly->poly_data->contour_count; ++i)
   {
     const PolyPath *contour = &poly->poly_data->contours[i];
@@ -407,12 +455,23 @@ static void sanitize_settings(void)
     settings.bg_color = settings.bg_color == 0 ? 0x000000 : 0xFFFFFF;
   }
 
+  if (settings.accent_color == 0 || settings.accent_color == 1)
+  {
+    settings.accent_color = settings.accent_color == 0 ? 0x000000 : 0xFFFFFF;
+  }
+
   settings.fg_color &= 0xFFFFFF;
   settings.bg_color &= 0xFFFFFF;
+  settings.accent_color &= 0xFFFFFF;
 
-  if (gcolor_equal(get_foreground_color(), GColorFromHEX(settings.bg_color)))
+  if (settings.line_color_mode < COLOR_MODE_FOREGROUND || settings.line_color_mode > COLOR_MODE_MIXED)
   {
-    settings.bg_color = gcolor_equal(get_foreground_color(), GColorBlack) ? 0xFFFFFF : 0x000000;
+    settings.line_color_mode = COLOR_MODE_FOREGROUND;
+  }
+
+  if (settings.face_color_mode < COLOR_MODE_FOREGROUND || settings.face_color_mode > COLOR_MODE_MIXED)
+  {
+    settings.face_color_mode = COLOR_MODE_MIXED;
   }
 }
 
@@ -446,6 +505,9 @@ static void load_settings(void)
   settings.slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : false;
   settings.fg_color = persist_exists(PERSIST_KEY_FG_COLOR) ? persist_read_int(PERSIST_KEY_FG_COLOR) : 0xFFFFFF;
   settings.bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : 0x000000;
+  settings.accent_color = persist_exists(PERSIST_KEY_ACCENT_COLOR) ? persist_read_int(PERSIST_KEY_ACCENT_COLOR) : 0xFFAA00;
+  settings.line_color_mode = persist_exists(PERSIST_KEY_LINE_COLOR_MODE) ? persist_read_int(PERSIST_KEY_LINE_COLOR_MODE) : COLOR_MODE_FOREGROUND;
+  settings.face_color_mode = persist_exists(PERSIST_KEY_FACE_COLOR_MODE) ? persist_read_int(PERSIST_KEY_FACE_COLOR_MODE) : COLOR_MODE_ACCENT;
   sanitize_settings();
 }
 
@@ -454,6 +516,9 @@ static void save_settings(void)
   persist_write_bool(PERSIST_KEY_SLOW_VERSION, settings.slow_version);
   persist_write_int(PERSIST_KEY_FG_COLOR, settings.fg_color);
   persist_write_int(PERSIST_KEY_BG_COLOR, settings.bg_color);
+  persist_write_int(PERSIST_KEY_ACCENT_COLOR, settings.accent_color);
+  persist_write_int(PERSIST_KEY_LINE_COLOR_MODE, settings.line_color_mode);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_MODE, settings.face_color_mode);
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context)
@@ -461,6 +526,9 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   Tuple *slow_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SLOW_VERSION);
   Tuple *fg_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FG_COLOR);
   Tuple *bg_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_BG_COLOR);
+  Tuple *accent_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_ACCENT_COLOR);
+  Tuple *line_color_mode_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_LINE_COLOR_MODE);
+  Tuple *face_color_mode_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR_MODE);
 
   if (slow_tuple != NULL)
   {
@@ -475,6 +543,21 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   if (bg_tuple != NULL)
   {
     settings.bg_color = bg_tuple->value->int32;
+  }
+
+  if (accent_tuple != NULL)
+  {
+    settings.accent_color = accent_tuple->value->int32;
+  }
+
+  if (line_color_mode_tuple != NULL)
+  {
+    settings.line_color_mode = line_color_mode_tuple->value->int32;
+  }
+
+  if (face_color_mode_tuple != NULL)
+  {
+    settings.face_color_mode = face_color_mode_tuple->value->int32;
   }
 
   sanitize_settings();

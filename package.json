@@ -21,7 +21,10 @@
     "messageKeys": {
       "SETTING_SLOW_VERSION": 0,
       "SETTING_FG_COLOR": 1,
-      "SETTING_BG_COLOR": 2
+      "SETTING_BG_COLOR": 2,
+      "SETTING_LINE_COLOR_MODE": 3,
+      "SETTING_FACE_COLOR_MODE": 4,
+      "SETTING_ACCENT_COLOR": 5
     },
     "targetPlatforms": [
       "diorite",

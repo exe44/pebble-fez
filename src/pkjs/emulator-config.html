@@ -31,6 +31,34 @@
         <div class="hint" id="bg-hint">Choose a Pebble-supported color.</div>
       </div>
 
+      <div class="card">
+        <label for="accent">Accent color</label>
+        <div id="accent-palette" class="palette"></div>
+        <div class="hint" id="accent-hint">Choose a Pebble-supported color.</div>
+      </div>
+
+      <div class="card">
+        <label for="line-mode">Line color</label>
+        <select id="line-mode">
+          <option value="0">Foreground</option>
+          <option value="1">Background</option>
+          <option value="2">Accent</option>
+          <option value="3">FG + BG</option>
+        </select>
+        <div class="hint">Choose the contour color source.</div>
+      </div>
+
+      <div class="card">
+        <label for="face-mode">Face color</label>
+        <select id="face-mode">
+          <option value="0">Foreground</option>
+          <option value="1">Background</option>
+          <option value="2">Accent</option>
+          <option value="3">FG + BG</option>
+        </select>
+        <div class="hint">Choose the solid polygon color source.</div>
+      </div>
+
       <button id="save" type="button">Save</button>
     </div>
 

@@ -1,6 +1,11 @@
 (function() {
+  var COLOR_MODE_FG = 0;
+  var COLOR_MODE_BG = 1;
+  var COLOR_MODE_ACCENT = 2;
+  var COLOR_MODE_MIX = 3;
   var current_fg;
   var current_bg;
+  var current_accent;
   var palettes = {
     color: [
       '55ff00', 'aaff55', 'ffff55', 'ffffaa',
@@ -74,6 +79,16 @@
     return decodeURIComponent(matches[1]);
   }
 
+  function normalize_mode(name, fallback) {
+    var mode = parseInt(get_param(name, fallback), 10);
+
+    if (isNaN(mode) || mode < COLOR_MODE_FG || mode > COLOR_MODE_MIX) {
+      return String(fallback);
+    }
+
+    return String(mode);
+  }
+
   function get_return_to() {
     var matches = /[?&]return_to=([^&]+)/.exec(window.location.search);
 
@@ -134,18 +149,29 @@
       current_bg = color;
       repaint();
     });
+
+    render_palette('accent-palette', current_accent, function(color) {
+      current_accent = color;
+      repaint();
+    });
   }
 
   document.getElementById('slow').checked = get_param('slow', '0') === '1';
   current_fg = round_to_palette(normalize_hex('fg', 'ffffff'));
   current_bg = round_to_palette(normalize_hex('bg', '000000'));
+  current_accent = round_to_palette(normalize_hex('accent', 'ffaa00'));
+  document.getElementById('line-mode').value = normalize_mode('line', COLOR_MODE_FG);
+  document.getElementById('face-mode').value = normalize_mode('face', COLOR_MODE_ACCENT);
   repaint();
 
   document.getElementById('save').addEventListener('click', function() {
     var result = {
       SETTING_SLOW_VERSION: document.getElementById('slow').checked ? 1 : 0,
       SETTING_FG_COLOR: parseInt(current_fg, 16),
-      SETTING_BG_COLOR: parseInt(current_bg, 16)
+      SETTING_BG_COLOR: parseInt(current_bg, 16),
+      SETTING_ACCENT_COLOR: parseInt(current_accent, 16),
+      SETTING_LINE_COLOR_MODE: parseInt(document.getElementById('line-mode').value, 10),
+      SETTING_FACE_COLOR_MODE: parseInt(document.getElementById('face-mode').value, 10)
     };
     var return_to = get_return_to();
     var response = encodeURIComponent(JSON.stringify(result));
