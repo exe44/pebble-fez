@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "app_settings.h"
+#include "clock_digits.h"
 #include "math_helper.h"
 #include "poly_data.h"
 
@@ -355,8 +356,8 @@ static void anim_stopped(struct Animation* animation, bool finished, void *conte
 
 //==============================================================================
 
-static int current_hr = -1;
-static int current_min = -1;
+static bool has_current_digits;
+static ClockDigits current_digits;
 
 static void apply_visual_settings(void)
 {
@@ -387,77 +388,63 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   }
 }
 
-static int calculate_12_format(int hr)
-{
-  if (hr == 0) hr += 12;
-  if (hr > 12) hr -= 12;
-  return hr;
-}
-
 // Called once per minute
 static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 {
-  int hr = clock_is_24h_style() ? time->tm_hour : calculate_12_format(time->tm_hour);
+  ClockDigits next_digits;
+  ClockDigitsDiff diff;
 
-  if (current_hr != hr)
+  clock_digits_from_time(time, clock_is_24h_style(), &next_digits);
+
+  if (!has_current_digits)
   {
-    int digit_0 = (int)(hr / 10);
-    int digit_1 = hr % 10;
-
-    if (current_hr == -1 || (int)(current_hr / 10) != digit_0)
+    for (int i = 0; i < CLOCK_DIGIT_COUNT; ++i)
     {
-      if (digit_0 == 0)
-      {
-        layer_set_hidden(digits[0], true);
-      }
-      else
-      {
-        layer_set_hidden(digits[0], false);
-        poly_layer_set_poly_ref(digits[0], &number_polys[digit_0]);
-      }
+      diff.changed[i] = true;
     }
-
-    if (current_hr == -1 || (current_hr % 10) != digit_1)
-    {
-      poly_layer_set_poly_ref(digits[1], &number_polys[digit_1]);
-    }
-
-    current_hr = hr;
+    diff.hour_changed = true;
+    diff.minute_changed = true;
+  }
+  else
+  {
+    clock_digits_diff(&current_digits, &next_digits, &diff);
   }
 
-  if (current_min != time->tm_min)
+  for (int i = 0; i < CLOCK_DIGIT_COUNT; ++i)
   {
-    int digit_2 = (int)(time->tm_min / 10);
-    int digit_3 = time->tm_min % 10;
-
-    if (current_min == -1 || (int)(current_min / 10) != digit_2)
+    if (!diff.changed[i])
     {
-      poly_layer_set_poly_ref(digits[2], &number_polys[digit_2]);
+      continue;
     }
 
-    if (current_min == -1 || (current_min % 10) != digit_3)
+    layer_set_hidden(digits[i], next_digits.hidden[i]);
+    if (!next_digits.hidden[i])
     {
-      poly_layer_set_poly_ref(digits[3], &number_polys[digit_3]);
+      poly_layer_set_poly_ref(digits[i], &number_polys[next_digits.value[i]]);
     }
-
-    current_min = time->tm_min;
-
-    // start camera move animation
-
-    if (anim != NULL && animation_is_scheduled(anim))
-    {
-      animation_unschedule(anim);
-    }
-
-    if (anim == NULL)
-    {
-      create_animation();
-    }
-
-    eye_from = eye;
-    eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
-    animation_schedule(anim);
   }
+
+  current_digits = next_digits;
+  has_current_digits = true;
+
+  if (!diff.minute_changed)
+  {
+    return;
+  }
+
+  if (anim != NULL && animation_is_scheduled(anim))
+  {
+    animation_unschedule(anim);
+  }
+
+  if (anim == NULL)
+  {
+    create_animation();
+  }
+
+  eye_from = eye;
+  eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
+  animation_schedule(anim);
 }
 
 //==============================================================================
