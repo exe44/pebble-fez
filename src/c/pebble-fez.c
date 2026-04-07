@@ -2,299 +2,16 @@
 #include "app_settings.h"
 #include "camera_controller.h"
 #include "clock_digits.h"
-#include "math_helper.h"
-#include "poly_data.h"
-
-#define NUM_DIGITS 4
-#define DIGIT_SHARED_POINT_COUNT ((int)ARRAY_LENGTH(digit_poly_points))
+#include "digit_renderer.h"
 
 static Window* window;
-static GPoint screen_center;
-static float poly_scale;
-static GSize digit_layer_size;
-static Vec3 digit_positions[NUM_DIGITS];
 static AppSettings settings;
 static CameraController camera_controller;
-
-//==============================================================================
-
-static int round_to_int(float value)
-{
-  return (int)(value + (value >= 0 ? 0.5f : -0.5f));
-}
-
-static void configure_layout(GRect bounds)
-{
-  const float width_scale = (float)bounds.size.w / 144.0f;
-  const float height_scale = (float)bounds.size.h / 168.0f;
-  float layout_scale = width_scale < height_scale ? width_scale : height_scale;
-#ifdef PBL_ROUND
-  layout_scale *= 0.8f;
-#endif
-
-  poly_scale = 1.4f * layout_scale;
-  screen_center = grect_center_point(&bounds);
-
-  digit_layer_size = GSize(round_to_int(40.0f * poly_scale), round_to_int(50.0f * poly_scale));
-
-  const float digit_offset_x = 40.0f * layout_scale;
-  const float digit_offset_y = 45.0f * layout_scale;
-  digit_positions[0] = Vec3(-digit_offset_x, digit_offset_y, 0);
-  digit_positions[1] = Vec3(digit_offset_x, digit_offset_y, 0);
-  digit_positions[2] = Vec3(-digit_offset_x, -digit_offset_y, 0);
-  digit_positions[3] = Vec3(digit_offset_x, -digit_offset_y, 0);
-}
-
-static void view_to_screen_pos(GPoint* out_screen_pos, Vec3* view_pos)
-{
-  out_screen_pos->x = screen_center.x + round_to_int(view_pos->x);
-  out_screen_pos->y = screen_center.y - round_to_int(view_pos->y);
-}
-
-static void world_to_screen_pos(GPoint* out_screen_pos, Vec3* world_pos)
-{
-  Vec3 view_pos;
-  mat4_multiply_vec3(&view_pos, camera_controller_get_view_matrix(&camera_controller), world_pos);
-  view_to_screen_pos(out_screen_pos, &view_pos);
-}
-
-//==============================================================================
-
-typedef struct Poly
-{
-  Vec3 center;
-  const DigitPolyData *poly_data;
-} Poly;
-
-static void poly_init(Poly* poly)
-{
-  poly->center = Vec3(0, 0, 0);
-  poly->poly_data = NULL;
-}
-
-//==============================================================================
-
-typedef struct PolyLayerData
-{
-  Poly* poly_ref;
-  Vec3 pos;
-} PolyLayerData;
-
-typedef struct ContourInfo
-{
-  uint8_t start;
-  uint8_t length;
-} ContourInfo;
-
-static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
-  const Poly *poly, const PolyLayerData *data, float x, float y, float z,
-  GPoint center_screen_pos, GSize frame_size)
-{
-  Vec3 local_pos = Vec3(x, y, z);
-  Vec3 model_pos, scale_pos, world_pos, view_pos;
-
-  vec3_multiply(&scale_pos, &local_pos, poly_scale);
-  vec3_minus(&model_pos, &scale_pos, &poly->center);
-  vec3_plus(&world_pos, &data->pos, &model_pos);
-  mat4_multiply_vec3(&view_pos, camera_controller_get_view_matrix(&camera_controller), &world_pos);
-
-  view_to_screen_pos(out_screen_pos, &view_pos);
-  out_screen_pos->x = out_screen_pos->x - center_screen_pos.x + frame_size.w / 2;
-  out_screen_pos->y = out_screen_pos->y - center_screen_pos.y + frame_size.h / 2;
-  *out_world_pos = world_pos;
-}
-
-static void draw_filled_path(GContext *ctx, GPoint *points, int point_num, GColor color)
-{
-  graphics_context_set_fill_color(ctx, color);
-
-  GPathInfo path_info = {
-    .num_points = point_num,
-    .points = points,
-  };
-  GPath path = {
-    .num_points = path_info.num_points,
-    .points = path_info.points,
-    .rotation = 0,
-    .offset = GPointZero,
-  };
-
-  gpath_draw_filled(ctx, &path);
-}
-
-static void draw_solid_poly(GContext *ctx, const Poly *poly,
-  const PolyLayerData *data, GPoint center_screen_pos, GSize frame_size,
-  const PolyPath *solid_poly, float z, GColor color)
-{
-  GPoint points[16];
-  Vec3 world_pos;
-
-  for (int i = 0; i < solid_poly->point_count; ++i)
-  {
-    GPoint point = digit_poly_points[solid_poly->point_idxs[i]];
-    project_model_point(&points[i], &world_pos, poly, data, point.x, point.y, z,
-      center_screen_pos, frame_size);
-  }
-
-  draw_filled_path(ctx, points, solid_poly->point_count, color);
-}
-
-static void draw_side_face(GContext *ctx, GPoint *screen_poss,
-  int front_a, int front_b, int back_offset, GColor color)
-{
-  GPoint points[4];
-  int back_a = front_a + back_offset;
-  int back_b = front_b + back_offset;
-
-  points[0] = screen_poss[front_a];
-  points[1] = screen_poss[front_b];
-  points[2] = screen_poss[back_b];
-  points[3] = screen_poss[back_a];
-
-  draw_filled_path(ctx, points, 4, color);
-}
-
-static int parse_front_contours(const DigitPolyData *poly_data, ContourInfo *contours)
-{
-  for (int i = 0; i < poly_data->contour_count; ++i)
-  {
-    contours[i].start = i;
-    contours[i].length = poly_data->contours[i].point_count;
-  }
-
-  return poly_data->contour_count;
-}
-
-static void draw_poly_fill(GContext *ctx, Poly *poly, const PolyLayerData *data,
-  GPoint center_screen_pos, GSize frame_size, GPoint *screen_poss, Vec3 *world_poss)
-{
-  ContourInfo contours[4];
-  const DigitPolyData *poly_data = poly->poly_data;
-  int contour_num = parse_front_contours(poly_data, contours);
-  int back_offset = DIGIT_SHARED_POINT_COUNT;
-  GColor fill_color = app_settings_get_face_color(&settings);
-
-  for (int i = 0; i < poly_data->solid_poly_count; ++i)
-  {
-    const PolyPath *solid_poly = &poly_data->solid_polys[i];
-
-    draw_solid_poly(ctx, poly, data, center_screen_pos, frame_size,
-      solid_poly, 0.0f, fill_color);
-    draw_solid_poly(ctx, poly, data, center_screen_pos, frame_size,
-      solid_poly, 10.0f, fill_color);
-  }
-
-  for (int i = 0; i < contour_num; ++i)
-  {
-    for (int j = 0; j < contours[i].length; ++j)
-    {
-      const PolyPath *contour = &poly_data->contours[contours[i].start];
-      int front_a = contour->point_idxs[j];
-      int front_b = contour->point_idxs[(j + 1) % contours[i].length];
-      draw_side_face(ctx, screen_poss, front_a, front_b, back_offset, fill_color);
-    }
-  }
-}
-
-static void poly_layer_update_proc(Layer *layer, GContext* ctx)
-{
-  PolyLayerData *data = layer_get_data(layer);
-  Poly* poly = data->poly_ref;
-
-  if (NULL == poly)
-    return;
-
-  static GPoint screen_poss[DIGIT_SHARED_POINT_COUNT * 2];
-  static Vec3 world_poss[DIGIT_SHARED_POINT_COUNT * 2];
-
-  // get current layer pos (frame center) in screen coordinate
-
-  GPoint center_screen_pos;
-  world_to_screen_pos(&center_screen_pos, &data->pos);
-
-  // update frame
-
-  GRect frame = layer_get_frame(layer);
-  frame.origin.x = center_screen_pos.x - frame.size.w / 2;
-  frame.origin.y = center_screen_pos.y - frame.size.h / 2;
-  layer_set_frame(layer, frame);
-
-  // project shared front/back points for fill, wireframe, and side faces
-  for (int i = 0; i < DIGIT_SHARED_POINT_COUNT; ++i)
-  {
-    GPoint point = digit_poly_points[i];
-    project_model_point(&screen_poss[i], &world_poss[i], poly, data, point.x, point.y, 0.0f,
-      center_screen_pos, frame.size);
-    project_model_point(&screen_poss[i + DIGIT_SHARED_POINT_COUNT],
-      &world_poss[i + DIGIT_SHARED_POINT_COUNT], poly, data, point.x, point.y, 10.0f,
-      center_screen_pos, frame.size);
-  }
-
-  draw_poly_fill(ctx, poly, data, center_screen_pos, frame.size, screen_poss, world_poss);
-
-  // draw wireframe from front/back contours plus connecting edges
-  graphics_context_set_stroke_color(ctx, app_settings_get_line_color(&settings));
-  for (int i = 0; i < poly->poly_data->contour_count; ++i)
-  {
-    const PolyPath *contour = &poly->poly_data->contours[i];
-    for (int j = 0; j < contour->point_count; ++j)
-    {
-      int front_a = contour->point_idxs[j];
-      int front_b = contour->point_idxs[(j + 1) % contour->point_count];
-      int back_a = front_a + DIGIT_SHARED_POINT_COUNT;
-      int back_b = front_b + DIGIT_SHARED_POINT_COUNT;
-
-      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[front_b]);
-      graphics_draw_line(ctx, screen_poss[back_a], screen_poss[back_b]);
-      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[back_a]);
-    }
-  }
-}
-
-static Layer* poly_layer_create(GSize size, Vec3 pos)
-{
-  Layer *layer;
-  PolyLayerData *data;
-
-  // pos is frame center
-  GPoint screen_pos;
-  world_to_screen_pos(&screen_pos, &pos);
-
-  layer = layer_create_with_data(GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h), sizeof(PolyLayerData));
-  data = layer_get_data(layer);
-  data->poly_ref = NULL;
-  data->pos = pos;
-
-  layer_set_update_proc(layer, poly_layer_update_proc);
-
-  return layer;
-}
-
-static void poly_layer_set_poly_ref(Layer *layer, Poly* poly)
-{
-  ((PolyLayerData*)layer_get_data(layer))->poly_ref = poly;
-  layer_mark_dirty(layer);
-}
-
-//==============================================================================
-
-static Poly number_polys[10];
-static Layer* digits[NUM_DIGITS];
-#define NUM_NUMBER_POLYS ((int)ARRAY_LENGTH(number_polys))
-
-static void init_number_poly(Poly *poly, int number)
-{
-  poly_init(poly);
-  poly->center = Vec3(15 * poly_scale, 20 * poly_scale, 6 * poly_scale);
-  poly->poly_data = &digit_poly_data[number];
-}
+static DigitRenderer digit_renderer;
 
 static void invalidate_digit_layers(void *context)
 {
-  for (int i = 0; i < NUM_DIGITS; ++i)
-  {
-    layer_mark_dirty(digits[i]);
-  }
+  digit_renderer_mark_all_dirty(&digit_renderer);
 }
 
 //==============================================================================
@@ -311,15 +28,12 @@ static void apply_visual_settings(void)
 
   window_set_background_color(window, app_settings_get_background_color(&settings));
 
-  if (digits[0] == NULL)
+  if (!digit_renderer_is_ready(&digit_renderer))
   {
     return;
   }
 
-  for (int i = 0; i < NUM_DIGITS; ++i)
-  {
-    layer_mark_dirty(digits[i]);
-  }
+  digit_renderer_mark_all_dirty(&digit_renderer);
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context)
@@ -361,11 +75,7 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
       continue;
     }
 
-    layer_set_hidden(digits[i], next_digits.hidden[i]);
-    if (!next_digits.hidden[i])
-    {
-      poly_layer_set_poly_ref(digits[i], &number_polys[next_digits.value[i]]);
-    }
+    digit_renderer_set_digit(&digit_renderer, i, next_digits.value[i], next_digits.hidden[i]);
   }
 
   current_digits = next_digits;
@@ -384,29 +94,10 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 static void window_load(Window* window)
 {
   Layer *root_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(root_layer);
-  configure_layout(bounds);
 
   // view_matrix should be ready before poly layer creation
   camera_controller_init(&camera_controller, settings.slow_version, invalidate_digit_layers, NULL);
-
-  //
-
-  for (int i = 0; i < NUM_NUMBER_POLYS; ++i)
-  {
-    init_number_poly(&number_polys[i], i);
-  }
-
-  //
-
-  digits[0] = poly_layer_create(digit_layer_size, digit_positions[0]);
-  layer_add_child(root_layer, digits[0]);
-  digits[1] = poly_layer_create(digit_layer_size, digit_positions[1]);
-  layer_add_child(root_layer, digits[1]);
-  digits[2] = poly_layer_create(digit_layer_size, digit_positions[2]);
-  layer_add_child(root_layer, digits[2]);
-  digits[3] = poly_layer_create(digit_layer_size, digit_positions[3]);
-  layer_add_child(root_layer, digits[3]);
+  digit_renderer_init(&digit_renderer, root_layer, &settings, camera_controller_get_view_matrix(&camera_controller));
 
   // Ensures time is displayed immediately
 
@@ -417,11 +108,7 @@ static void window_load(Window* window)
 
 static void window_unload(Window *window)
 {
-  for (int i = 0; i < NUM_DIGITS; i++)
-  {
-    layer_destroy(digits[i]);
-  }
-
+  digit_renderer_deinit(&digit_renderer);
   camera_controller_deinit(&camera_controller);
 }
 
