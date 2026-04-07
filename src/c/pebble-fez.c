@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "app_settings.h"
+#include "camera_controller.h"
 #include "clock_digits.h"
 #include "math_helper.h"
 #include "poly_data.h"
@@ -8,13 +9,12 @@
 #define DIGIT_SHARED_POINT_COUNT ((int)ARRAY_LENGTH(digit_poly_points))
 
 static Window* window;
-static Mat4 view_matrix;
 static GPoint screen_center;
 static float poly_scale;
 static GSize digit_layer_size;
 static Vec3 digit_positions[NUM_DIGITS];
 static AppSettings settings;
-static Vec3 eye, at, up;
+static CameraController camera_controller;
 
 //==============================================================================
 
@@ -54,7 +54,7 @@ static void view_to_screen_pos(GPoint* out_screen_pos, Vec3* view_pos)
 static void world_to_screen_pos(GPoint* out_screen_pos, Vec3* world_pos)
 {
   Vec3 view_pos;
-  mat4_multiply_vec3(&view_pos, &view_matrix, world_pos);
+  mat4_multiply_vec3(&view_pos, camera_controller_get_view_matrix(&camera_controller), world_pos);
   view_to_screen_pos(out_screen_pos, &view_pos);
 }
 
@@ -96,7 +96,7 @@ static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
   vec3_multiply(&scale_pos, &local_pos, poly_scale);
   vec3_minus(&model_pos, &scale_pos, &poly->center);
   vec3_plus(&world_pos, &data->pos, &model_pos);
-  mat4_multiply_vec3(&view_pos, &view_matrix, &world_pos);
+  mat4_multiply_vec3(&view_pos, camera_controller_get_view_matrix(&camera_controller), &world_pos);
 
   view_to_screen_pos(out_screen_pos, &view_pos);
   out_screen_pos->x = out_screen_pos->x - center_screen_pos.x + frame_size.w / 2;
@@ -289,68 +289,11 @@ static void init_number_poly(Poly *poly, int number)
   poly->poly_data = &digit_poly_data[number];
 }
 
-//==============================================================================
-// camera
-
-static Vec3 eye_waypoints[] = {
-  { 1, 1, 1 },
-  { 1, -1, 1 },
-  { -1, -1, 1 },
-  { -1, 1, 1 }
-};
-
-static Vec3 eye_from;
-static int eye_to_idx;
-
-//==============================================================================
-
-static AnimationImplementation anim_impl;
-static Animation* anim;
-
-static void anim_stopped(struct Animation* animation, bool finished, void *context);
-
-static void create_animation(void)
+static void invalidate_digit_layers(void *context)
 {
-  anim = animation_create();
-  animation_set_delay(anim, (settings.slow_version ? 1000 : 500));
-  animation_set_duration(anim, (settings.slow_version ? 3000 : 500));
-  animation_set_implementation(anim, &anim_impl);
-  animation_set_handlers(anim, (AnimationHandlers) {
-    .stopped = (AnimationStoppedHandler)anim_stopped,
-  }, NULL);
-}
-
-static void anim_update(struct Animation* animation, const AnimationProgress time_normalized)
-{
-  float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
-  eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
-  eye.y = eye_from.y * (1 - ratio) + eye_waypoints[eye_to_idx].y * ratio;
-  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
-
   for (int i = 0; i < NUM_DIGITS; ++i)
   {
     layer_mark_dirty(digits[i]);
-  }
-}
-
-// void anim_teardown(struct Animation* animation)
-static void anim_stopped(struct Animation* animation, bool finished, void *context)
-{
-  if (!finished)
-    return;
-
-  eye = eye_waypoints[eye_to_idx];
-  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
-
-  for (int i = 0; i < NUM_DIGITS; ++i)
-  {
-    layer_mark_dirty(digits[i]);
-  }
-
-  animation_destroy(animation);
-  if (anim == animation)
-  {
-    anim = NULL;
   }
 }
 
@@ -384,6 +327,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   if (app_settings_apply_message(&settings, iterator))
   {
     app_settings_save(&settings);
+    camera_controller_set_slow_mode(&camera_controller, settings.slow_version);
     apply_visual_settings();
   }
 }
@@ -432,19 +376,7 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
     return;
   }
 
-  if (anim != NULL && animation_is_scheduled(anim))
-  {
-    animation_unschedule(anim);
-  }
-
-  if (anim == NULL)
-  {
-    create_animation();
-  }
-
-  eye_from = eye;
-  eye_to_idx = (eye_to_idx + 1) % ARRAY_LENGTH(eye_waypoints);
-  animation_schedule(anim);
+  camera_controller_start_transition(&camera_controller);
 }
 
 //==============================================================================
@@ -456,12 +388,7 @@ static void window_load(Window* window)
   configure_layout(bounds);
 
   // view_matrix should be ready before poly layer creation
-
-  eye = eye_waypoints[0];
-  at = Vec3(0, 0, 0);
-  up = Vec3(0, 1, 0);
-  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
-  eye_to_idx = 0;
+  camera_controller_init(&camera_controller, settings.slow_version, invalidate_digit_layers, NULL);
 
   //
 
@@ -481,14 +408,6 @@ static void window_load(Window* window)
   digits[3] = poly_layer_create(digit_layer_size, digit_positions[3]);
   layer_add_child(root_layer, digits[3]);
 
-  //
-
-  anim_impl.setup = NULL;
-  anim_impl.update = anim_update;
-  // anim_impl.teardown = anim_teardown;
-  anim_impl.teardown = NULL;
-  anim = NULL;
-
   // Ensures time is displayed immediately
 
   time_t timestamp = time(NULL);
@@ -498,17 +417,12 @@ static void window_load(Window* window)
 
 static void window_unload(Window *window)
 {
-  if (anim != NULL)
-  {
-    animation_unschedule(anim);
-    animation_destroy(anim);
-    anim = NULL;
-  }
-
   for (int i = 0; i < NUM_DIGITS; i++)
   {
     layer_destroy(digits[i]);
   }
+
+  camera_controller_deinit(&camera_controller);
 }
 
 //==============================================================================
