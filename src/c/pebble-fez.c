@@ -44,17 +44,17 @@ static void configure_layout(GRect bounds)
   digit_positions[3] = Vec3(digit_offset_x, -digit_offset_y, 0);
 }
 
-static void ViewToScreenPos(GPoint* out_screen_pos, Vec3* view_pos)
+static void view_to_screen_pos(GPoint* out_screen_pos, Vec3* view_pos)
 {
   out_screen_pos->x = screen_center.x + round_to_int(view_pos->x);
   out_screen_pos->y = screen_center.y - round_to_int(view_pos->y);
 }
 
-static void WorldToScreenPos(GPoint* out_screen_pos, Vec3* world_pos)
+static void world_to_screen_pos(GPoint* out_screen_pos, Vec3* world_pos)
 {
   Vec3 view_pos;
   mat4_multiply_vec3(&view_pos, &view_matrix, world_pos);
-  ViewToScreenPos(out_screen_pos, &view_pos);
+  view_to_screen_pos(out_screen_pos, &view_pos);
 }
 
 //==============================================================================
@@ -97,7 +97,7 @@ static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
   vec3_plus(&world_pos, &data->pos, &model_pos);
   mat4_multiply_vec3(&view_pos, &view_matrix, &world_pos);
 
-  ViewToScreenPos(out_screen_pos, &view_pos);
+  view_to_screen_pos(out_screen_pos, &view_pos);
   out_screen_pos->x = out_screen_pos->x - center_screen_pos.x + frame_size.w / 2;
   out_screen_pos->y = out_screen_pos->y - center_screen_pos.y + frame_size.h / 2;
   *out_world_pos = world_pos;
@@ -209,7 +209,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   // get current layer pos (frame center) in screen coordinate
 
   GPoint center_screen_pos;
-  WorldToScreenPos(&center_screen_pos, &data->pos);
+  world_to_screen_pos(&center_screen_pos, &data->pos);
 
   // update frame
 
@@ -257,7 +257,7 @@ static Layer* poly_layer_create(GSize size, Vec3 pos)
 
   // pos is frame center
   GPoint screen_pos;
-  WorldToScreenPos(&screen_pos, &pos);
+  world_to_screen_pos(&screen_pos, &pos);
 
   layer = layer_create_with_data(GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h), sizeof(PolyLayerData));
   data = layer_get_data(layer);
@@ -324,7 +324,7 @@ static void anim_update(struct Animation* animation, const AnimationProgress tim
   float ratio = (float)time_normalized / ANIMATION_NORMALIZED_MAX;
   eye.x = eye_from.x * (1 - ratio) + eye_waypoints[eye_to_idx].x * ratio;
   eye.y = eye_from.y * (1 - ratio) + eye_waypoints[eye_to_idx].y * ratio;
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
 
   for (int i = 0; i < NUM_DIGITS; ++i)
   {
@@ -339,7 +339,7 @@ static void anim_stopped(struct Animation* animation, bool finished, void *conte
     return;
 
   eye = eye_waypoints[eye_to_idx];
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
 
   for (int i = 0; i < NUM_DIGITS; ++i)
   {
@@ -473,7 +473,7 @@ static void window_load(Window* window)
   eye = eye_waypoints[0];
   at = Vec3(0, 0, 0);
   up = Vec3(0, 1, 0);
-  MatrixLookAtRH(&view_matrix, &eye, &at, &up);
+  mat4_look_at_rh(&view_matrix, &eye, &at, &up);
   eye_to_idx = 0;
 
   //
