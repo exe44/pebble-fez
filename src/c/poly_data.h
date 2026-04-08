@@ -110,7 +110,7 @@ static const uint8_t contour_5[] = { 0, 3, 11, 10, 14, 15, 19, 16, 8, 10, 6, 4 }
 static const PolyPath digit_contours_5[] = {
   { contour_5, ARRAY_LENGTH(contour_5) },
 };
-static const uint8_t poly_5_a[] = { 0, 3, 11, 10, 14, 15, 19, 16, 8, 9, 6, 4 };
+static const uint8_t poly_5_a[] = { 0, 3, 11, 10, 14, 15, 19, 16, 8, 10, 6, 4 };
 static const PolyPath digit_solids_5[] = {
   { poly_5_a, ARRAY_LENGTH(poly_5_a) },
 };
