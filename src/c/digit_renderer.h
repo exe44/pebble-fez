@@ -11,7 +11,7 @@ typedef struct DigitRenderer
   DigitRendererState *state;
 } DigitRenderer;
 
-void digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
+bool digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
   const AppSettings *settings, const Mat4 *view_matrix);
 void digit_renderer_deinit(DigitRenderer *renderer);
 void digit_renderer_set_digit(DigitRenderer *renderer, int index, int value, bool hidden);

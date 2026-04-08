@@ -274,13 +274,14 @@ static void poly_layer_set_poly_ref(Layer *layer, Poly* poly)
   layer_mark_dirty(layer);
 }
 
-void digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
+bool digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
   const AppSettings *settings, const Mat4 *view_matrix)
 {
+  renderer->state = NULL;
   renderer->state = malloc(sizeof(DigitRendererState));
   if (renderer->state == NULL)
   {
-    return;
+    return false;
   }
 
   GRect bounds = layer_get_bounds(root_layer);
@@ -299,6 +300,8 @@ void digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
     renderer->state->digits[i] = poly_layer_create(renderer, renderer->state->digit_layer_size, renderer->state->digit_positions[i]);
     layer_add_child(root_layer, renderer->state->digits[i]);
   }
+
+  return true;
 }
 
 void digit_renderer_deinit(DigitRenderer *renderer)
@@ -320,6 +323,11 @@ void digit_renderer_deinit(DigitRenderer *renderer)
 
 void digit_renderer_set_digit(DigitRenderer *renderer, int index, int value, bool hidden)
 {
+  if (renderer->state == NULL)
+  {
+    return;
+  }
+
   Layer *layer = renderer->state->digits[index];
 
   layer_set_hidden(layer, hidden);

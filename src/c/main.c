@@ -78,6 +78,14 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
     clock_digits_diff(&s_current_digits, &next_digits, &diff);
   }
 
+  s_current_digits = next_digits;
+  s_has_current_digits = true;
+
+  if (!digit_renderer_is_ready(&s_digit_renderer))
+  {
+    return;
+  }
+
   for (int i = 0; i < CLOCK_DIGIT_COUNT; ++i)
   {
     if (!diff.changed[i])
@@ -87,9 +95,6 @@ static void handle_minute_tick(struct tm* time, TimeUnits units_changed)
 
     digit_renderer_set_digit(&s_digit_renderer, i, next_digits.value[i], next_digits.hidden[i]);
   }
-
-  s_current_digits = next_digits;
-  s_has_current_digits = true;
 
   if (!diff.minute_changed)
   {
@@ -108,8 +113,12 @@ static void window_load(Window* window)
 
   // view_matrix should be ready before poly layer creation
   camera_controller_init(&s_camera_controller, s_settings.slow_version, invalidate_digit_layers, NULL);
-  digit_renderer_init(&s_digit_renderer, root_layer, &s_settings,
-    camera_controller_get_view_matrix(&s_camera_controller));
+  if (!digit_renderer_init(&s_digit_renderer, root_layer, &s_settings,
+    camera_controller_get_view_matrix(&s_camera_controller)))
+  {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to initialize digit renderer");
+    return;
+  }
 
   s_has_current_digits = false;
 
