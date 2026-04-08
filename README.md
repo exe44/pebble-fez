@@ -21,6 +21,16 @@ The compiled bundle will be generated at `build/pebble-fez.pbw`.
 
 If this is your first checkout or `package.json` / `package-lock.json` changed, run `npm install` before building to install the JavaScript dependencies used by the configuration page.
 
+## C Modules
+
+- `src/c/main.c`: app lifecycle and module coordination
+- `src/c/app_settings.[hc]`: persisted settings and color helpers
+- `src/c/camera_controller.[hc]`: camera transition state and view matrix updates
+- `src/c/clock_digits.[hc]`: time-to-digit conversion and diff logic
+- `src/c/digit_renderer.[hc]`: digit layout, layer management, projection, and drawing
+- `src/c/math_helper.[hc]`: vector and matrix helpers
+- `src/c/poly_data.h`: static digit mesh data
+
 ## Install
 
 Install to a Basalt emulator:
