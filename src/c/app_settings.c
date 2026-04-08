@@ -1,5 +1,15 @@
 #include "app_settings.h"
 
+static ColorMode sanitize_color_mode(int32_t value, ColorMode fallback)
+{
+  if (value < COLOR_MODE_FOREGROUND || value > COLOR_MODE_MIXED)
+  {
+    return fallback;
+  }
+
+  return (ColorMode)value;
+}
+
 static void sanitize_settings(AppSettings *settings)
 {
   if (settings->fg_color == 0 || settings->fg_color == 1)
@@ -21,15 +31,8 @@ static void sanitize_settings(AppSettings *settings)
   settings->bg_color &= 0xFFFFFF;
   settings->accent_color &= 0xFFFFFF;
 
-  if (settings->line_color_mode < COLOR_MODE_FOREGROUND || settings->line_color_mode > COLOR_MODE_MIXED)
-  {
-    settings->line_color_mode = COLOR_MODE_FOREGROUND;
-  }
-
-  if (settings->face_color_mode < COLOR_MODE_FOREGROUND || settings->face_color_mode > COLOR_MODE_MIXED)
-  {
-    settings->face_color_mode = COLOR_MODE_MIXED;
-  }
+  settings->line_color_mode = sanitize_color_mode(settings->line_color_mode, COLOR_MODE_FOREGROUND);
+  settings->face_color_mode = sanitize_color_mode(settings->face_color_mode, COLOR_MODE_MIXED);
 }
 
 static GColor get_mixed_color(const AppSettings *settings)
@@ -66,8 +69,12 @@ void app_settings_load(AppSettings *settings)
   settings->fg_color = persist_exists(PERSIST_KEY_FG_COLOR) ? persist_read_int(PERSIST_KEY_FG_COLOR) : 0xFFFFFF;
   settings->bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : 0x000000;
   settings->accent_color = persist_exists(PERSIST_KEY_ACCENT_COLOR) ? persist_read_int(PERSIST_KEY_ACCENT_COLOR) : 0xFFAA00;
-  settings->line_color_mode = persist_exists(PERSIST_KEY_LINE_COLOR_MODE) ? persist_read_int(PERSIST_KEY_LINE_COLOR_MODE) : COLOR_MODE_FOREGROUND;
-  settings->face_color_mode = persist_exists(PERSIST_KEY_FACE_COLOR_MODE) ? persist_read_int(PERSIST_KEY_FACE_COLOR_MODE) : COLOR_MODE_ACCENT;
+  settings->line_color_mode = persist_exists(PERSIST_KEY_LINE_COLOR_MODE)
+    ? (ColorMode)persist_read_int(PERSIST_KEY_LINE_COLOR_MODE)
+    : COLOR_MODE_FOREGROUND;
+  settings->face_color_mode = persist_exists(PERSIST_KEY_FACE_COLOR_MODE)
+    ? (ColorMode)persist_read_int(PERSIST_KEY_FACE_COLOR_MODE)
+    : COLOR_MODE_ACCENT;
   sanitize_settings(settings);
 }
 
@@ -77,8 +84,8 @@ void app_settings_save(const AppSettings *settings)
   persist_write_int(PERSIST_KEY_FG_COLOR, settings->fg_color);
   persist_write_int(PERSIST_KEY_BG_COLOR, settings->bg_color);
   persist_write_int(PERSIST_KEY_ACCENT_COLOR, settings->accent_color);
-  persist_write_int(PERSIST_KEY_LINE_COLOR_MODE, settings->line_color_mode);
-  persist_write_int(PERSIST_KEY_FACE_COLOR_MODE, settings->face_color_mode);
+  persist_write_int(PERSIST_KEY_LINE_COLOR_MODE, (int32_t)settings->line_color_mode);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_MODE, (int32_t)settings->face_color_mode);
 }
 
 bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *iterator)
@@ -117,13 +124,13 @@ bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *itera
 
   if (line_color_mode_tuple != NULL)
   {
-    settings->line_color_mode = line_color_mode_tuple->value->int32;
+    settings->line_color_mode = (ColorMode)line_color_mode_tuple->value->int32;
     changed = true;
   }
 
   if (face_color_mode_tuple != NULL)
   {
-    settings->face_color_mode = face_color_mode_tuple->value->int32;
+    settings->face_color_mode = (ColorMode)face_color_mode_tuple->value->int32;
     changed = true;
   }
 
@@ -152,10 +159,10 @@ GColor app_settings_get_accent_color(const AppSettings *settings)
 
 GColor app_settings_get_line_color(const AppSettings *settings)
 {
-  return get_color_for_mode(settings, (ColorMode)settings->line_color_mode);
+  return get_color_for_mode(settings, settings->line_color_mode);
 }
 
 GColor app_settings_get_face_color(const AppSettings *settings)
 {
-  return get_color_for_mode(settings, (ColorMode)settings->face_color_mode);
+  return get_color_for_mode(settings, settings->face_color_mode);
 }

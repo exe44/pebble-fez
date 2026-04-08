@@ -16,8 +16,8 @@ typedef struct AppSettings
   int32_t fg_color;
   int32_t bg_color;
   int32_t accent_color;
-  int32_t line_color_mode;
-  int32_t face_color_mode;
+  ColorMode line_color_mode;
+  ColorMode face_color_mode;
 } AppSettings;
 
 enum
