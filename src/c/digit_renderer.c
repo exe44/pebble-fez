@@ -70,7 +70,7 @@ static void init_number_poly(DigitRenderer *renderer, Poly *poly, int number)
   poly->poly_data = &digit_poly_data[number];
 }
 
-static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
+static void project_model_point(GPoint *out_screen_pos,
   const DigitRenderer *renderer, const Poly *poly, const PolyLayerData *data, float x, float y, float z,
   GPoint center_screen_pos, GSize frame_size)
 {
@@ -85,7 +85,6 @@ static void project_model_point(GPoint *out_screen_pos, Vec3 *out_world_pos,
   view_to_screen_pos(out_screen_pos, renderer, &view_pos);
   out_screen_pos->x = out_screen_pos->x - center_screen_pos.x + frame_size.w / 2;
   out_screen_pos->y = out_screen_pos->y - center_screen_pos.y + frame_size.h / 2;
-  *out_world_pos = world_pos;
 }
 
 static void draw_filled_path(GContext *ctx, GPoint *points, int point_num, GColor color)
@@ -110,12 +109,11 @@ static void draw_solid_poly(GContext *ctx, const DigitRenderer *renderer, const 
   const PolyPath *solid_poly, float z, GColor color)
 {
   GPoint points[16];
-  Vec3 world_pos;
 
   for (int i = 0; i < solid_poly->point_count; ++i)
   {
     GPoint point = digit_poly_points[solid_poly->point_idxs[i]];
-    project_model_point(&points[i], &world_pos, renderer, poly, data, point.x, point.y, z,
+    project_model_point(&points[i], renderer, poly, data, point.x, point.y, z,
       center_screen_pos, frame_size);
   }
 
@@ -149,8 +147,7 @@ static int parse_front_contours(const DigitPolyData *poly_data, ContourInfo *con
 }
 
 static void draw_poly_fill(GContext *ctx, const DigitRenderer *renderer, Poly *poly,
-  const PolyLayerData *data, GPoint center_screen_pos, GSize frame_size,
-  GPoint *screen_poss, Vec3 *world_poss)
+  const PolyLayerData *data, GPoint center_screen_pos, GSize frame_size, GPoint *screen_poss)
 {
   ContourInfo contours[4];
   const DigitPolyData *poly_data = poly->poly_data;
@@ -192,7 +189,6 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   }
 
   static GPoint screen_poss[DIGIT_SHARED_POINT_COUNT * 2];
-  static Vec3 world_poss[DIGIT_SHARED_POINT_COUNT * 2];
   GPoint center_screen_pos;
   GRect frame = layer_get_frame(layer);
 
@@ -205,14 +201,13 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   for (int i = 0; i < DIGIT_SHARED_POINT_COUNT; ++i)
   {
     GPoint point = digit_poly_points[i];
-    project_model_point(&screen_poss[i], &world_poss[i], renderer, poly, data, point.x, point.y, 0.0f,
+    project_model_point(&screen_poss[i], renderer, poly, data, point.x, point.y, 0.0f,
       center_screen_pos, frame.size);
-    project_model_point(&screen_poss[i + DIGIT_SHARED_POINT_COUNT],
-      &world_poss[i + DIGIT_SHARED_POINT_COUNT], renderer, poly, data, point.x, point.y, 10.0f,
+    project_model_point(&screen_poss[i + DIGIT_SHARED_POINT_COUNT], renderer, poly, data, point.x, point.y, 10.0f,
       center_screen_pos, frame.size);
   }
 
-  draw_poly_fill(ctx, renderer, poly, data, center_screen_pos, frame.size, screen_poss, world_poss);
+  draw_poly_fill(ctx, renderer, poly, data, center_screen_pos, frame.size, screen_poss);
 
   graphics_context_set_stroke_color(ctx, app_settings_get_line_color(renderer->settings));
   for (int i = 0; i < poly->poly_data->contour_count; ++i)
