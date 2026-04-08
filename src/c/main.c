@@ -14,6 +14,11 @@ static DigitRenderer s_digit_renderer;
 
 static void invalidate_digit_layers(void *context)
 {
+  if (!digit_renderer_is_ready(&s_digit_renderer))
+  {
+    return;
+  }
+
   digit_renderer_mark_all_dirty(&s_digit_renderer);
 }
 
@@ -112,7 +117,13 @@ static void window_load(Window* window)
   Layer *root_layer = window_get_root_layer(window);
 
   // view_matrix should be ready before poly layer creation
-  camera_controller_init(&s_camera_controller, s_settings.slow_version, invalidate_digit_layers, NULL);
+  if (!camera_controller_init(&s_camera_controller, s_settings.slow_version,
+    invalidate_digit_layers, NULL))
+  {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Failed to initialize camera controller");
+    return;
+  }
+
   if (!digit_renderer_init(&s_digit_renderer, root_layer, &s_settings,
     camera_controller_get_view_matrix(&s_camera_controller)))
   {
