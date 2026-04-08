@@ -259,6 +259,11 @@ static Layer* poly_layer_create(DigitRenderer *renderer, GSize size, Vec3 pos)
   world_to_screen_pos(&screen_pos, renderer, &pos);
   layer = layer_create_with_data(GRect(screen_pos.x - size.w / 2, screen_pos.y - size.h / 2, size.w, size.h),
     sizeof(PolyLayerData));
+  if (layer == NULL)
+  {
+    return NULL;
+  }
+
   data = layer_get_data(layer);
   data->renderer = renderer;
   data->poly_ref = NULL;
@@ -266,6 +271,20 @@ static Layer* poly_layer_create(DigitRenderer *renderer, GSize size, Vec3 pos)
   layer_set_update_proc(layer, poly_layer_update_proc);
 
   return layer;
+}
+
+static void destroy_digit_layers(DigitRendererState *state)
+{
+  for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
+  {
+    if (state->digits[i] == NULL)
+    {
+      continue;
+    }
+
+    layer_destroy(state->digits[i]);
+    state->digits[i] = NULL;
+  }
 }
 
 static void poly_layer_set_poly_ref(Layer *layer, Poly* poly)
@@ -290,6 +309,11 @@ bool digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
   renderer->state->view_matrix = view_matrix;
   configure_layout(renderer, bounds);
 
+  for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
+  {
+    renderer->state->digits[i] = NULL;
+  }
+
   for (int i = 0; i < (int)ARRAY_LENGTH(renderer->state->number_polys); ++i)
   {
     init_number_poly(renderer, &renderer->state->number_polys[i], i);
@@ -298,6 +322,14 @@ bool digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
   for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
   {
     renderer->state->digits[i] = poly_layer_create(renderer, renderer->state->digit_layer_size, renderer->state->digit_positions[i]);
+    if (renderer->state->digits[i] == NULL)
+    {
+      destroy_digit_layers(renderer->state);
+      free(renderer->state);
+      renderer->state = NULL;
+      return false;
+    }
+
     layer_add_child(root_layer, renderer->state->digits[i]);
   }
 
@@ -311,11 +343,7 @@ void digit_renderer_deinit(DigitRenderer *renderer)
     return;
   }
 
-  for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
-  {
-    layer_destroy(renderer->state->digits[i]);
-    renderer->state->digits[i] = NULL;
-  }
+  destroy_digit_layers(renderer->state);
 
   free(renderer->state);
   renderer->state = NULL;

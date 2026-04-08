@@ -32,15 +32,22 @@ static void invalidate(CameraController *controller)
 
 static void anim_stopped(struct Animation* animation, bool finished, void *context);
 
-static void create_animation(CameraController *controller)
+static bool create_animation(CameraController *controller)
 {
   controller->state->anim = animation_create();
+  if (controller->state->anim == NULL)
+  {
+    return false;
+  }
+
   animation_set_delay(controller->state->anim, controller->state->slow_mode ? 1000 : 500);
   animation_set_duration(controller->state->anim, controller->state->slow_mode ? 3000 : 500);
   animation_set_implementation(controller->state->anim, &controller->state->anim_impl);
   animation_set_handlers(controller->state->anim, (AnimationHandlers) {
     .stopped = anim_stopped,
   }, controller);
+
+  return true;
 }
 
 static void anim_update(struct Animation* animation, const AnimationProgress time_normalized)
@@ -144,12 +151,18 @@ void camera_controller_start_transition(CameraController *controller)
 
   if (controller->state->anim == NULL)
   {
-    create_animation(controller);
+    if (!create_animation(controller))
+    {
+      return;
+    }
   }
 
   controller->state->eye_from = controller->state->eye;
   controller->state->eye_to_idx = (controller->state->eye_to_idx + 1) % ARRAY_LENGTH(EYE_WAYPOINTS);
-  animation_schedule(controller->state->anim);
+  if (controller->state->anim != NULL)
+  {
+    animation_schedule(controller->state->anim);
+  }
 }
 
 const Mat4 *camera_controller_get_view_matrix(const CameraController *controller)
