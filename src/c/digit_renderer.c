@@ -56,8 +56,8 @@ static void configure_layout(DigitRenderer *renderer, GRect bounds)
     round_to_int(50.0f * state->poly_scale));
 
   {
-    const float digit_offset_x = 40.0f * layout_scale;
-    const float digit_offset_y = 45.0f * layout_scale;
+    const float digit_offset_x = 35.0f * layout_scale;
+    const float digit_offset_y = 42.0f * layout_scale;
     state->digit_positions[0] = Vec3(-digit_offset_x, digit_offset_y, 0);
     state->digit_positions[1] = Vec3(digit_offset_x, digit_offset_y, 0);
     state->digit_positions[2] = Vec3(-digit_offset_x, -digit_offset_y, 0);
