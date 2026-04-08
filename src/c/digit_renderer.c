@@ -1,6 +1,26 @@
 #include "digit_renderer.h"
+#include "poly_data.h"
 
+#define DIGIT_RENDERER_DIGIT_COUNT 4
 #define DIGIT_SHARED_POINT_COUNT ((int)ARRAY_LENGTH(digit_poly_points))
+
+typedef struct Poly
+{
+  Vec3 center;
+  const DigitPolyData *poly_data;
+} Poly;
+
+struct DigitRendererState
+{
+  Layer *digits[DIGIT_RENDERER_DIGIT_COUNT];
+  Poly number_polys[10];
+  GPoint screen_center;
+  float poly_scale;
+  GSize digit_layer_size;
+  Vec3 digit_positions[DIGIT_RENDERER_DIGIT_COUNT];
+  const AppSettings *settings;
+  const Mat4 *view_matrix;
+};
 
 typedef struct PolyLayerData
 {
@@ -22,6 +42,7 @@ static int round_to_int(float value)
 
 static void configure_layout(DigitRenderer *renderer, GRect bounds)
 {
+  DigitRendererState *state = renderer->state;
   const float width_scale = (float)bounds.size.w / 144.0f;
   const float height_scale = (float)bounds.size.h / 168.0f;
   float layout_scale = width_scale < height_scale ? width_scale : height_scale;
@@ -29,31 +50,33 @@ static void configure_layout(DigitRenderer *renderer, GRect bounds)
   layout_scale *= 0.8f;
 #endif
 
-  renderer->poly_scale = 1.4f * layout_scale;
-  renderer->screen_center = grect_center_point(&bounds);
-  renderer->digit_layer_size = GSize(round_to_int(40.0f * renderer->poly_scale),
-    round_to_int(50.0f * renderer->poly_scale));
+  state->poly_scale = 1.4f * layout_scale;
+  state->screen_center = grect_center_point(&bounds);
+  state->digit_layer_size = GSize(round_to_int(40.0f * state->poly_scale),
+    round_to_int(50.0f * state->poly_scale));
 
   {
     const float digit_offset_x = 40.0f * layout_scale;
     const float digit_offset_y = 45.0f * layout_scale;
-    renderer->digit_positions[0] = Vec3(-digit_offset_x, digit_offset_y, 0);
-    renderer->digit_positions[1] = Vec3(digit_offset_x, digit_offset_y, 0);
-    renderer->digit_positions[2] = Vec3(-digit_offset_x, -digit_offset_y, 0);
-    renderer->digit_positions[3] = Vec3(digit_offset_x, -digit_offset_y, 0);
+    state->digit_positions[0] = Vec3(-digit_offset_x, digit_offset_y, 0);
+    state->digit_positions[1] = Vec3(digit_offset_x, digit_offset_y, 0);
+    state->digit_positions[2] = Vec3(-digit_offset_x, -digit_offset_y, 0);
+    state->digit_positions[3] = Vec3(digit_offset_x, -digit_offset_y, 0);
   }
 }
 
 static void view_to_screen_pos(GPoint* out_screen_pos, const DigitRenderer *renderer, const Vec3 *view_pos)
 {
-  out_screen_pos->x = renderer->screen_center.x + round_to_int(view_pos->x);
-  out_screen_pos->y = renderer->screen_center.y - round_to_int(view_pos->y);
+  const DigitRendererState *state = renderer->state;
+
+  out_screen_pos->x = state->screen_center.x + round_to_int(view_pos->x);
+  out_screen_pos->y = state->screen_center.y - round_to_int(view_pos->y);
 }
 
 static void world_to_screen_pos(GPoint* out_screen_pos, const DigitRenderer *renderer, const Vec3 *world_pos)
 {
   Vec3 view_pos;
-  mat4_multiply_vec3(&view_pos, renderer->view_matrix, world_pos);
+  mat4_multiply_vec3(&view_pos, renderer->state->view_matrix, world_pos);
   view_to_screen_pos(out_screen_pos, renderer, &view_pos);
 }
 
@@ -66,7 +89,7 @@ static void poly_init(Poly* poly)
 static void init_number_poly(DigitRenderer *renderer, Poly *poly, int number)
 {
   poly_init(poly);
-  poly->center = Vec3(15 * renderer->poly_scale, 20 * renderer->poly_scale, 6 * renderer->poly_scale);
+  poly->center = Vec3(15 * renderer->state->poly_scale, 20 * renderer->state->poly_scale, 6 * renderer->state->poly_scale);
   poly->poly_data = &digit_poly_data[number];
 }
 
@@ -77,10 +100,10 @@ static void project_model_point(GPoint *out_screen_pos,
   Vec3 local_pos = Vec3(x, y, z);
   Vec3 model_pos, scale_pos, world_pos, view_pos;
 
-  vec3_multiply(&scale_pos, &local_pos, renderer->poly_scale);
+  vec3_multiply(&scale_pos, &local_pos, renderer->state->poly_scale);
   vec3_minus(&model_pos, &scale_pos, &poly->center);
   vec3_plus(&world_pos, &data->pos, &model_pos);
-  mat4_multiply_vec3(&view_pos, renderer->view_matrix, &world_pos);
+  mat4_multiply_vec3(&view_pos, renderer->state->view_matrix, &world_pos);
 
   view_to_screen_pos(out_screen_pos, renderer, &view_pos);
   out_screen_pos->x = out_screen_pos->x - center_screen_pos.x + frame_size.w / 2;
@@ -153,7 +176,7 @@ static void draw_poly_fill(GContext *ctx, const DigitRenderer *renderer, Poly *p
   const DigitPolyData *poly_data = poly->poly_data;
   int contour_num = parse_front_contours(poly_data, contours);
   int back_offset = DIGIT_SHARED_POINT_COUNT;
-  GColor fill_color = app_settings_get_face_color(renderer->settings);
+  GColor fill_color = app_settings_get_face_color(renderer->state->settings);
 
   for (int i = 0; i < poly_data->solid_poly_count; ++i)
   {
@@ -209,7 +232,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 
   draw_poly_fill(ctx, renderer, poly, data, center_screen_pos, frame.size, screen_poss);
 
-  graphics_context_set_stroke_color(ctx, app_settings_get_line_color(renderer->settings));
+  graphics_context_set_stroke_color(ctx, app_settings_get_line_color(renderer->state->settings));
   for (int i = 0; i < poly->poly_data->contour_count; ++i)
   {
     const PolyPath *contour = &poly->poly_data->contours[i];
@@ -254,67 +277,72 @@ static void poly_layer_set_poly_ref(Layer *layer, Poly* poly)
 void digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
   const AppSettings *settings, const Mat4 *view_matrix)
 {
+  renderer->state = malloc(sizeof(DigitRendererState));
+  if (renderer->state == NULL)
+  {
+    return;
+  }
+
   GRect bounds = layer_get_bounds(root_layer);
 
-  renderer->settings = settings;
-  renderer->view_matrix = view_matrix;
+  renderer->state->settings = settings;
+  renderer->state->view_matrix = view_matrix;
   configure_layout(renderer, bounds);
 
-  for (int i = 0; i < (int)ARRAY_LENGTH(renderer->number_polys); ++i)
+  for (int i = 0; i < (int)ARRAY_LENGTH(renderer->state->number_polys); ++i)
   {
-    init_number_poly(renderer, &renderer->number_polys[i], i);
+    init_number_poly(renderer, &renderer->state->number_polys[i], i);
   }
 
   for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
   {
-    renderer->digits[i] = poly_layer_create(renderer, renderer->digit_layer_size, renderer->digit_positions[i]);
-    layer_add_child(root_layer, renderer->digits[i]);
+    renderer->state->digits[i] = poly_layer_create(renderer, renderer->state->digit_layer_size, renderer->state->digit_positions[i]);
+    layer_add_child(root_layer, renderer->state->digits[i]);
   }
-
-  renderer->is_ready = true;
 }
 
 void digit_renderer_deinit(DigitRenderer *renderer)
 {
-  if (!renderer->is_ready)
+  if (renderer->state == NULL)
   {
     return;
   }
 
   for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
   {
-    layer_destroy(renderer->digits[i]);
-    renderer->digits[i] = NULL;
+    layer_destroy(renderer->state->digits[i]);
+    renderer->state->digits[i] = NULL;
   }
 
-  renderer->is_ready = false;
+  free(renderer->state);
+  renderer->state = NULL;
 }
 
 void digit_renderer_set_digit(DigitRenderer *renderer, int index, int value, bool hidden)
 {
-  Layer *layer = renderer->digits[index];
+  Layer *layer = renderer->state->digits[index];
 
   layer_set_hidden(layer, hidden);
   if (!hidden)
   {
-    poly_layer_set_poly_ref(layer, &renderer->number_polys[value]);
+    poly_layer_set_poly_ref(layer, &renderer->state->number_polys[value]);
   }
 }
 
 void digit_renderer_mark_all_dirty(DigitRenderer *renderer)
 {
-  if (!renderer->is_ready)
+  if (renderer->state == NULL)
   {
     return;
   }
 
   for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
   {
-    layer_mark_dirty(renderer->digits[i]);
+    layer_mark_dirty(renderer->state->digits[i]);
   }
 }
 
 bool digit_renderer_is_ready(const DigitRenderer *renderer)
 {
-  return renderer->is_ready;
+  return renderer->state != NULL;
 }
