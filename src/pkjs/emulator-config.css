@@ -35,6 +35,11 @@ p {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
+.card.hidden,
+.hidden {
+  display: none;
+}
+
 label {
   display: block;
   margin-bottom: 8px;
@@ -82,6 +87,14 @@ label {
   width: 18px;
   height: 18px;
   margin: 0;
+}
+
+.card .toggle + .toggle {
+  margin-top: 10px;
+}
+
+.line-subsection {
+  margin-top: 16px;
 }
 
 button {

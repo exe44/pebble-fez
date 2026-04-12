@@ -7,6 +7,9 @@
     "watchface"
   ],
   "private": true,
+  "scripts": {
+    "preview:clay": "node scripts/preview-clay-config.js"
+  },
   "dependencies": {
     "@rebble/clay": "^1.0.8"
   },
@@ -20,11 +23,14 @@
     ],
     "messageKeys": {
       "SETTING_SLOW_VERSION": 0,
-      "SETTING_FG_COLOR": 1,
-      "SETTING_BG_COLOR": 2,
-      "SETTING_LINE_COLOR_MODE": 3,
-      "SETTING_FACE_COLOR_MODE": 4,
-      "SETTING_ACCENT_COLOR": 5
+      "SETTING_BG_COLOR": 1,
+      "SETTING_FACE_COLOR": 2,
+      "SETTING_LINE_COLOR": 3,
+      "SETTING_FACE_MIX_WITH_BACKGROUND": 4,
+      "SETTING_LINE_MIX_WITH_BACKGROUND": 5,
+      "SETTING_SPLIT_LINE_COLORS": 6,
+      "SETTING_BACK_LINE_COLOR": 7,
+      "SETTING_SIDE_LINE_COLOR": 8
     },
     "targetPlatforms": [
       "diorite",

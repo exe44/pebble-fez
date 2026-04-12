@@ -232,7 +232,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 
   draw_poly_fill(ctx, renderer, poly, data, center_screen_pos, frame.size, screen_poss);
 
-  graphics_context_set_stroke_color(ctx, app_settings_get_line_color(renderer->state->settings));
+  graphics_context_set_stroke_color(ctx, app_settings_get_back_line_color(renderer->state->settings));
   for (int i = 0; i < poly->poly_data->contour_count; ++i)
   {
     const PolyPath *contour = &poly->poly_data->contours[i];
@@ -243,9 +243,33 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
       int back_a = front_a + DIGIT_SHARED_POINT_COUNT;
       int back_b = front_b + DIGIT_SHARED_POINT_COUNT;
 
-      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[front_b]);
       graphics_draw_line(ctx, screen_poss[back_a], screen_poss[back_b]);
+    }
+  }
+
+  graphics_context_set_stroke_color(ctx, app_settings_get_side_line_color(renderer->state->settings));
+  for (int i = 0; i < poly->poly_data->contour_count; ++i)
+  {
+    const PolyPath *contour = &poly->poly_data->contours[i];
+    for (int j = 0; j < contour->point_count; ++j)
+    {
+      int front_a = contour->point_idxs[j];
+      int back_a = front_a + DIGIT_SHARED_POINT_COUNT;
+
       graphics_draw_line(ctx, screen_poss[front_a], screen_poss[back_a]);
+    }
+  }
+
+  graphics_context_set_stroke_color(ctx, app_settings_get_line_color(renderer->state->settings));
+  for (int i = 0; i < poly->poly_data->contour_count; ++i)
+  {
+    const PolyPath *contour = &poly->poly_data->contours[i];
+    for (int j = 0; j < contour->point_count; ++j)
+    {
+      int front_a = contour->point_idxs[j];
+      int front_b = contour->point_idxs[(j + 1) % contour->point_count];
+
+      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[front_b]);
     }
   }
 }

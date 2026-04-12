@@ -1,64 +1,61 @@
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
+var customClay = require('./custom-clay');
 var buildEmulatorConfigUrl = require('./emulator-config');
 
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 var current_config_mode = 'clay';
 var MESSAGE_KEYS = {
   SETTING_SLOW_VERSION: 0,
-  SETTING_FG_COLOR: 1,
-  SETTING_BG_COLOR: 2,
-  SETTING_LINE_COLOR_MODE: 3,
-  SETTING_FACE_COLOR_MODE: 4,
-  SETTING_ACCENT_COLOR: 5
+  SETTING_BG_COLOR: 1,
+  SETTING_FACE_COLOR: 2,
+  SETTING_LINE_COLOR: 3,
+  SETTING_FACE_MIX_WITH_BACKGROUND: 4,
+  SETTING_LINE_MIX_WITH_BACKGROUND: 5,
+  SETTING_SPLIT_LINE_COLORS: 6,
+  SETTING_BACK_LINE_COLOR: 7,
+  SETTING_SIDE_LINE_COLOR: 8
 };
-var COLOR_MODE_FG = 0;
-var COLOR_MODE_BG = 1;
-var COLOR_MODE_ACCENT = 2;
-var COLOR_MODE_MIX = 3;
-
-function sanitize_color_mode(value, fallback) {
-  var mode = parseInt(value, 10);
-
-  if (!isFinite(mode) || mode < COLOR_MODE_FG || mode > COLOR_MODE_MIX) {
-    return fallback;
-  }
-
-  return mode;
-}
 
 function sanitize_settings(settings) {
-  if (!isFinite(settings.SETTING_FG_COLOR)) {
-    settings.SETTING_FG_COLOR = 0xFFFFFF;
-  }
-
   if (!isFinite(settings.SETTING_BG_COLOR)) {
     settings.SETTING_BG_COLOR = 0x000000;
   }
 
-  if (!isFinite(settings.SETTING_ACCENT_COLOR)) {
-    settings.SETTING_ACCENT_COLOR = 0xFFAA00;
-  }
-
-  if (settings.SETTING_FG_COLOR === 0 || settings.SETTING_FG_COLOR === 1) {
-    settings.SETTING_FG_COLOR = settings.SETTING_FG_COLOR === 0 ? 0x000000 : 0xFFFFFF;
+  if (!isFinite(settings.SETTING_FACE_COLOR)) {
+    settings.SETTING_FACE_COLOR = 0xFFAA00;
   }
 
   if (settings.SETTING_BG_COLOR === 0 || settings.SETTING_BG_COLOR === 1) {
     settings.SETTING_BG_COLOR = settings.SETTING_BG_COLOR === 0 ? 0x000000 : 0xFFFFFF;
   }
 
-  if (settings.SETTING_ACCENT_COLOR === 0 || settings.SETTING_ACCENT_COLOR === 1) {
-    settings.SETTING_ACCENT_COLOR = settings.SETTING_ACCENT_COLOR === 0 ? 0x000000 : 0xFFFFFF;
+  if (settings.SETTING_FACE_COLOR === 0 || settings.SETTING_FACE_COLOR === 1) {
+    settings.SETTING_FACE_COLOR = settings.SETTING_FACE_COLOR === 0 ? 0x000000 : 0xFFFFFF;
   }
 
-  settings.SETTING_FG_COLOR = settings.SETTING_FG_COLOR & 0xFFFFFF;
   settings.SETTING_BG_COLOR = settings.SETTING_BG_COLOR & 0xFFFFFF;
-  settings.SETTING_ACCENT_COLOR = settings.SETTING_ACCENT_COLOR & 0xFFFFFF;
+  settings.SETTING_FACE_COLOR = settings.SETTING_FACE_COLOR & 0xFFFFFF;
 
   settings.SETTING_SLOW_VERSION = settings.SETTING_SLOW_VERSION ? 1 : 0;
-  settings.SETTING_LINE_COLOR_MODE = sanitize_color_mode(settings.SETTING_LINE_COLOR_MODE, COLOR_MODE_FG);
-  settings.SETTING_FACE_COLOR_MODE = sanitize_color_mode(settings.SETTING_FACE_COLOR_MODE, COLOR_MODE_MIX);
+  settings.SETTING_FACE_MIX_WITH_BACKGROUND = settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0;
+  settings.SETTING_LINE_MIX_WITH_BACKGROUND = settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0;
+  if (!isFinite(settings.SETTING_LINE_COLOR)) {
+    settings.SETTING_LINE_COLOR = 0xFFFFFF;
+  }
+
+  if (!isFinite(settings.SETTING_BACK_LINE_COLOR)) {
+    settings.SETTING_BACK_LINE_COLOR = settings.SETTING_LINE_COLOR;
+  }
+
+  if (!isFinite(settings.SETTING_SIDE_LINE_COLOR)) {
+    settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_LINE_COLOR;
+  }
+
+  settings.SETTING_LINE_COLOR = settings.SETTING_LINE_COLOR & 0xFFFFFF;
+  settings.SETTING_BACK_LINE_COLOR = settings.SETTING_BACK_LINE_COLOR & 0xFFFFFF;
+  settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_SIDE_LINE_COLOR & 0xFFFFFF;
+  settings.SETTING_SPLIT_LINE_COLORS = settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0;
 
   return settings;
 }
@@ -104,11 +101,14 @@ function normalize_clay_settings(response) {
 
   return {
     SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION.value ? 1 : 0,
-    SETTING_FG_COLOR: parseInt(settings.SETTING_FG_COLOR.value, 10),
     SETTING_BG_COLOR: parseInt(settings.SETTING_BG_COLOR.value, 10),
-    SETTING_ACCENT_COLOR: parseInt(settings.SETTING_ACCENT_COLOR.value, 10),
-    SETTING_LINE_COLOR_MODE: parseInt(settings.SETTING_LINE_COLOR_MODE.value, 10),
-    SETTING_FACE_COLOR_MODE: parseInt(settings.SETTING_FACE_COLOR_MODE.value, 10)
+    SETTING_FACE_COLOR: parseInt(settings.SETTING_FACE_COLOR.value, 10),
+    SETTING_LINE_COLOR: parseInt(settings.SETTING_LINE_COLOR.value, 10),
+    SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND.value ? 1 : 0,
+    SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND.value ? 1 : 0,
+    SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS.value ? 1 : 0,
+    SETTING_BACK_LINE_COLOR: parseInt(settings.SETTING_BACK_LINE_COLOR.value, 10),
+    SETTING_SIDE_LINE_COLOR: parseInt(settings.SETTING_SIDE_LINE_COLOR.value, 10)
   };
 }
 
@@ -117,11 +117,14 @@ function normalize_emulator_settings(response) {
 
   return {
     SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION ? 1 : 0,
-    SETTING_FG_COLOR: parseInt(settings.SETTING_FG_COLOR, 10),
     SETTING_BG_COLOR: parseInt(settings.SETTING_BG_COLOR, 10),
-    SETTING_ACCENT_COLOR: parseInt(settings.SETTING_ACCENT_COLOR, 10),
-    SETTING_LINE_COLOR_MODE: parseInt(settings.SETTING_LINE_COLOR_MODE, 10),
-    SETTING_FACE_COLOR_MODE: parseInt(settings.SETTING_FACE_COLOR_MODE, 10)
+    SETTING_FACE_COLOR: parseInt(settings.SETTING_FACE_COLOR, 10),
+    SETTING_LINE_COLOR: parseInt(settings.SETTING_LINE_COLOR, 10),
+    SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0,
+    SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0,
+    SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0,
+    SETTING_BACK_LINE_COLOR: parseInt(settings.SETTING_BACK_LINE_COLOR, 10),
+    SETTING_SIDE_LINE_COLOR: parseInt(settings.SETTING_SIDE_LINE_COLOR, 10)
   };
 }
 
@@ -160,11 +163,14 @@ Pebble.addEventListener('webviewclosed', function(e) {
 
   Pebble.sendAppMessage({
     [MESSAGE_KEYS.SETTING_SLOW_VERSION]: settings.SETTING_SLOW_VERSION,
-    [MESSAGE_KEYS.SETTING_FG_COLOR]: settings.SETTING_FG_COLOR,
     [MESSAGE_KEYS.SETTING_BG_COLOR]: settings.SETTING_BG_COLOR,
-    [MESSAGE_KEYS.SETTING_ACCENT_COLOR]: settings.SETTING_ACCENT_COLOR,
-    [MESSAGE_KEYS.SETTING_LINE_COLOR_MODE]: settings.SETTING_LINE_COLOR_MODE,
-    [MESSAGE_KEYS.SETTING_FACE_COLOR_MODE]: settings.SETTING_FACE_COLOR_MODE
+    [MESSAGE_KEYS.SETTING_FACE_COLOR]: settings.SETTING_FACE_COLOR,
+    [MESSAGE_KEYS.SETTING_LINE_COLOR]: settings.SETTING_LINE_COLOR,
+    [MESSAGE_KEYS.SETTING_FACE_MIX_WITH_BACKGROUND]: settings.SETTING_FACE_MIX_WITH_BACKGROUND,
+    [MESSAGE_KEYS.SETTING_LINE_MIX_WITH_BACKGROUND]: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
+    [MESSAGE_KEYS.SETTING_SPLIT_LINE_COLORS]: settings.SETTING_SPLIT_LINE_COLORS,
+    [MESSAGE_KEYS.SETTING_BACK_LINE_COLOR]: settings.SETTING_BACK_LINE_COLOR,
+    [MESSAGE_KEYS.SETTING_SIDE_LINE_COLOR]: settings.SETTING_SIDE_LINE_COLOR
   }, function() {
     console.log('Sent config data to Pebble');
   }, function(err) {

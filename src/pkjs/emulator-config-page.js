@@ -1,11 +1,9 @@
 (function() {
-  var COLOR_MODE_FG = 0;
-  var COLOR_MODE_BG = 1;
-  var COLOR_MODE_ACCENT = 2;
-  var COLOR_MODE_MIX = 3;
-  var current_fg;
   var current_bg;
-  var current_accent;
+  var current_face;
+  var current_line;
+  var current_back_line;
+  var current_side_line;
   var palettes = {
     color: [
       '55ff00', 'aaff55', 'ffff55', 'ffffaa',
@@ -79,16 +77,6 @@
     return decodeURIComponent(matches[1]);
   }
 
-  function normalize_mode(name, fallback) {
-    var mode = parseInt(get_param(name, fallback), 10);
-
-    if (isNaN(mode) || mode < COLOR_MODE_FG || mode > COLOR_MODE_MIX) {
-      return String(fallback);
-    }
-
-    return String(mode);
-  }
-
   function get_return_to() {
     var matches = /[?&]return_to=([^&]+)/.exec(window.location.search);
 
@@ -139,39 +127,100 @@
     return closest;
   }
 
-  function repaint() {
-    render_palette('fg-palette', current_fg, function(color) {
-      current_fg = color;
-      repaint();
-    });
+  function pick_random_color() {
+    var palette_mode = get_param('palette', 'color');
+    var colors = palettes[palette_mode] || palettes.color;
+    var index = Math.floor(Math.random() * colors.length);
 
+    return colors[index];
+  }
+
+  function randomize_colors() {
+    if (document.getElementById('randomize-bg').checked) {
+      current_bg = pick_random_color();
+    }
+
+    if (document.getElementById('randomize-face').checked) {
+      current_face = pick_random_color();
+    }
+
+    if (!document.getElementById('randomize-line').checked) {
+      repaint();
+      return;
+    }
+
+    current_line = pick_random_color();
+
+    if (document.getElementById('split-line-colors').checked) {
+      current_back_line = pick_random_color();
+      current_side_line = pick_random_color();
+    } else {
+      current_back_line = current_line;
+      current_side_line = current_line;
+    }
+
+    repaint();
+  }
+
+  function repaint() {
     render_palette('bg-palette', current_bg, function(color) {
       current_bg = color;
       repaint();
     });
 
-    render_palette('accent-palette', current_accent, function(color) {
-      current_accent = color;
+    render_palette('face-palette', current_face, function(color) {
+      current_face = color;
       repaint();
     });
+
+    render_palette('line-palette', current_line, function(color) {
+      current_line = color;
+      repaint();
+    });
+
+    render_palette('back-line-palette', current_back_line, function(color) {
+      current_back_line = color;
+      repaint();
+    });
+
+    render_palette('side-line-palette', current_side_line, function(color) {
+      current_side_line = color;
+      repaint();
+    });
+
+    document.getElementById('back-line-card').className =
+      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
+    document.getElementById('side-line-card').className =
+      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
   }
 
   document.getElementById('slow').checked = get_param('slow', '0') === '1';
-  current_fg = round_to_palette(normalize_hex('fg', 'ffffff'));
   current_bg = round_to_palette(normalize_hex('bg', '000000'));
-  current_accent = round_to_palette(normalize_hex('accent', 'ffaa00'));
-  document.getElementById('line-mode').value = normalize_mode('line', COLOR_MODE_FG);
-  document.getElementById('face-mode').value = normalize_mode('face', COLOR_MODE_ACCENT);
+  current_face = round_to_palette(normalize_hex('face', 'ffaa00'));
+  current_line = round_to_palette(normalize_hex('line', 'ffffff'));
+  current_back_line = round_to_palette(normalize_hex('backLine', current_line));
+  current_side_line = round_to_palette(normalize_hex('sideLine', current_line));
+  document.getElementById('face-mix').checked = get_param('faceMix', '0') === '1';
+  document.getElementById('line-mix').checked = get_param('lineMix', '0') === '1';
+  document.getElementById('split-line-colors').checked = get_param('splitLine', '0') === '1';
+  document.getElementById('randomize-bg').checked = false;
+  document.getElementById('randomize-face').checked = true;
+  document.getElementById('randomize-line').checked = true;
+  document.getElementById('split-line-colors').addEventListener('change', repaint);
+  document.getElementById('randomize-colors').addEventListener('click', randomize_colors);
   repaint();
 
   document.getElementById('save').addEventListener('click', function() {
     var result = {
       SETTING_SLOW_VERSION: document.getElementById('slow').checked ? 1 : 0,
-      SETTING_FG_COLOR: parseInt(current_fg, 16),
       SETTING_BG_COLOR: parseInt(current_bg, 16),
-      SETTING_ACCENT_COLOR: parseInt(current_accent, 16),
-      SETTING_LINE_COLOR_MODE: parseInt(document.getElementById('line-mode').value, 10),
-      SETTING_FACE_COLOR_MODE: parseInt(document.getElementById('face-mode').value, 10)
+      SETTING_FACE_COLOR: parseInt(current_face, 16),
+      SETTING_LINE_COLOR: parseInt(current_line, 16),
+      SETTING_FACE_MIX_WITH_BACKGROUND: document.getElementById('face-mix').checked ? 1 : 0,
+      SETTING_LINE_MIX_WITH_BACKGROUND: document.getElementById('line-mix').checked ? 1 : 0,
+      SETTING_SPLIT_LINE_COLORS: document.getElementById('split-line-colors').checked ? 1 : 0,
+      SETTING_BACK_LINE_COLOR: parseInt(current_back_line, 16),
+      SETTING_SIDE_LINE_COLOR: parseInt(current_side_line, 16)
     };
     var return_to = get_return_to();
     var response = encodeURIComponent(JSON.stringify(result));
