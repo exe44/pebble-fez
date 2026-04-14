@@ -135,6 +135,46 @@
     return colors[index];
   }
 
+  function is_bw_mode() {
+    return get_param('palette', 'color') === 'bw';
+  }
+
+  function reset_bw_advanced_colors() {
+    document.getElementById('face-mix').checked = false;
+    document.getElementById('line-mix').checked = false;
+    document.getElementById('split-line-colors').checked = false;
+    current_back_line = current_line;
+    current_side_line = current_line;
+  }
+
+  function sync_visible_sections() {
+    var hide_advanced_colors = is_bw_mode();
+
+    if (hide_advanced_colors) {
+      reset_bw_advanced_colors();
+    }
+
+    document.getElementById('face-mix-row').className =
+      hide_advanced_colors ? 'hidden' : '';
+    document.getElementById('line-mix-row').className =
+      hide_advanced_colors ? 'hidden' : '';
+    document.getElementById('split-line-row').className =
+      hide_advanced_colors ? 'hidden' : '';
+    document.getElementById('randomize-card').className =
+      hide_advanced_colors ? 'card hidden' : 'card';
+
+    if (hide_advanced_colors) {
+      document.getElementById('back-line-card').className = 'line-subsection hidden';
+      document.getElementById('side-line-card').className = 'line-subsection hidden';
+      return;
+    }
+
+    document.getElementById('back-line-card').className =
+      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
+    document.getElementById('side-line-card').className =
+      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
+  }
+
   function randomize_colors() {
     if (document.getElementById('randomize-bg').checked) {
       current_bg = pick_random_color();
@@ -188,10 +228,7 @@
       repaint();
     });
 
-    document.getElementById('back-line-card').className =
-      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
-    document.getElementById('side-line-card').className =
-      document.getElementById('split-line-colors').checked ? 'line-subsection' : 'line-subsection hidden';
+    sync_visible_sections();
   }
 
   document.getElementById('slow').checked = get_param('slow', '0') === '1';

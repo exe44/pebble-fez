@@ -28,6 +28,10 @@ module.exports = function(minified) {
     return palettes.color;
   }
 
+  function is_bw_platform() {
+    return get_palette() === palettes.bw;
+  }
+
   function pick_random_color() {
     var palette = get_palette();
     var index = Math.floor(Math.random() * palette.length);
@@ -52,6 +56,16 @@ module.exports = function(minified) {
     back.disable();
     side.hide();
     side.disable();
+  }
+
+  function reset_bw_advanced_colors() {
+    var line_color = clayConfig.getItemByMessageKey('SETTING_LINE_COLOR').get();
+
+    clayConfig.getItemByMessageKey('SETTING_FACE_MIX_WITH_BACKGROUND').set(false);
+    clayConfig.getItemByMessageKey('SETTING_LINE_MIX_WITH_BACKGROUND').set(false);
+    clayConfig.getItemByMessageKey('SETTING_SPLIT_LINE_COLORS').set(false);
+    clayConfig.getItemByMessageKey('SETTING_BACK_LINE_COLOR').set(line_color);
+    clayConfig.getItemByMessageKey('SETTING_SIDE_LINE_COLOR').set(line_color);
   }
 
   function randomize_colors() {
@@ -88,8 +102,33 @@ module.exports = function(minified) {
   }
 
   clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
+    var face_mix_toggle = clayConfig.getItemByMessageKey('SETTING_FACE_MIX_WITH_BACKGROUND');
+    var line_mix_toggle = clayConfig.getItemByMessageKey('SETTING_LINE_MIX_WITH_BACKGROUND');
     var split_toggle = clayConfig.getItemByMessageKey('SETTING_SPLIT_LINE_COLORS');
+    var back_line = clayConfig.getItemByMessageKey('SETTING_BACK_LINE_COLOR');
+    var side_line = clayConfig.getItemByMessageKey('SETTING_SIDE_LINE_COLOR');
+    var randomize_targets = clayConfig.getItemById('randomize-targets');
     var randomize_button = clayConfig.getItemById('randomize-colors');
+    var hide_advanced_colors = is_bw_platform();
+
+    if (hide_advanced_colors) {
+      reset_bw_advanced_colors();
+      face_mix_toggle.hide();
+      face_mix_toggle.disable();
+      line_mix_toggle.hide();
+      line_mix_toggle.disable();
+      split_toggle.hide();
+      split_toggle.disable();
+      back_line.hide();
+      back_line.disable();
+      side_line.hide();
+      side_line.disable();
+      randomize_targets.hide();
+      randomize_targets.disable();
+      randomize_button.hide();
+      randomize_button.disable();
+      return;
+    }
 
     sync_split_line_color_fields.call(split_toggle);
     split_toggle.on('change', sync_split_line_color_fields);

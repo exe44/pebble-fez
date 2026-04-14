@@ -56,8 +56,17 @@ function get_default_settings(palette_mode) {
   return clone_settings(defaultSettings[palette_mode] || defaultSettings.color);
 }
 
-function sanitize_settings(settings, fallback_settings) {
-  var fallback = fallback_settings || get_default_settings(get_platform_palette_mode());
+function normalize_setting_value(setting, fallback) {
+  if (setting && setting.value !== undefined) {
+    return setting.value;
+  }
+
+  return fallback;
+}
+
+function sanitize_settings(settings, fallback_settings, palette_mode) {
+  var mode = palette_mode || get_platform_palette_mode();
+  var fallback = fallback_settings || get_default_settings(mode);
 
   if (!isFinite(settings.SETTING_BG_COLOR)) {
     settings.SETTING_BG_COLOR = fallback.SETTING_BG_COLOR;
@@ -98,6 +107,14 @@ function sanitize_settings(settings, fallback_settings) {
   settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_SIDE_LINE_COLOR & 0xFFFFFF;
   settings.SETTING_SPLIT_LINE_COLORS = settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0;
 
+  if (mode === 'bw') {
+    settings.SETTING_FACE_MIX_WITH_BACKGROUND = 0;
+    settings.SETTING_LINE_MIX_WITH_BACKGROUND = 0;
+    settings.SETTING_SPLIT_LINE_COLORS = 0;
+    settings.SETTING_BACK_LINE_COLOR = settings.SETTING_LINE_COLOR;
+    settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_LINE_COLOR;
+  }
+
   return settings;
 }
 
@@ -126,18 +143,20 @@ function save_settings(settings) {
 }
 
 function normalize_clay_settings(response) {
+  var palette_mode = get_platform_palette_mode();
   var settings = clay.getSettings(response, false);
+  var fallback_settings = get_default_settings(palette_mode);
 
   return {
-    SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION.value ? 1 : 0,
-    SETTING_BG_COLOR: parseInt(settings.SETTING_BG_COLOR.value, 10),
-    SETTING_FACE_COLOR: parseInt(settings.SETTING_FACE_COLOR.value, 10),
-    SETTING_LINE_COLOR: parseInt(settings.SETTING_LINE_COLOR.value, 10),
-    SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND.value ? 1 : 0,
-    SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND.value ? 1 : 0,
-    SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS.value ? 1 : 0,
-    SETTING_BACK_LINE_COLOR: parseInt(settings.SETTING_BACK_LINE_COLOR.value, 10),
-    SETTING_SIDE_LINE_COLOR: parseInt(settings.SETTING_SIDE_LINE_COLOR.value, 10)
+    SETTING_SLOW_VERSION: normalize_setting_value(settings.SETTING_SLOW_VERSION, fallback_settings.SETTING_SLOW_VERSION) ? 1 : 0,
+    SETTING_BG_COLOR: parseInt(normalize_setting_value(settings.SETTING_BG_COLOR, fallback_settings.SETTING_BG_COLOR), 10),
+    SETTING_FACE_COLOR: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR, fallback_settings.SETTING_FACE_COLOR), 10),
+    SETTING_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_LINE_COLOR, fallback_settings.SETTING_LINE_COLOR), 10),
+    SETTING_FACE_MIX_WITH_BACKGROUND: normalize_setting_value(settings.SETTING_FACE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_FACE_MIX_WITH_BACKGROUND) ? 1 : 0,
+    SETTING_LINE_MIX_WITH_BACKGROUND: normalize_setting_value(settings.SETTING_LINE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_LINE_MIX_WITH_BACKGROUND) ? 1 : 0,
+    SETTING_SPLIT_LINE_COLORS: normalize_setting_value(settings.SETTING_SPLIT_LINE_COLORS, fallback_settings.SETTING_SPLIT_LINE_COLORS) ? 1 : 0,
+    SETTING_BACK_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_BACK_LINE_COLOR, fallback_settings.SETTING_BACK_LINE_COLOR), 10),
+    SETTING_SIDE_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_SIDE_LINE_COLOR, fallback_settings.SETTING_SIDE_LINE_COLOR), 10)
   };
 }
 
@@ -161,7 +180,7 @@ Pebble.addEventListener('showConfiguration', function() {
   var palette_mode = get_platform_palette_mode();
   var fallback_settings = get_default_settings(palette_mode);
   var saved_settings = load_saved_settings();
-  var initial_settings = sanitize_settings(saved_settings, fallback_settings);
+  var initial_settings = sanitize_settings(saved_settings, fallback_settings, palette_mode);
 
   if (is_emulator()) {
     current_config_mode = 'emulator';
@@ -190,7 +209,7 @@ Pebble.addEventListener('webviewclosed', function(e) {
     return;
   }
 
-  settings = sanitize_settings(settings);
+  settings = sanitize_settings(settings, null, get_platform_palette_mode());
   save_settings(settings);
 
   Pebble.sendAppMessage({
