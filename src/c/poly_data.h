@@ -38,8 +38,8 @@ static const PolyPath digit_contours_0[] = {
   { contour_0_outer, ARRAY_LENGTH(contour_0_outer) },
   { contour_0_inner, ARRAY_LENGTH(contour_0_inner) },
 };
-static const uint8_t poly_0_a[] = { 0, 1, 17, 16 };
-static const uint8_t poly_0_b[] = { 0, 3, 19, 16, 12, 14, 6, 4 };
+static const uint8_t poly_0_a[] = { 0, 1, 13, 15, 19, 16 };
+static const uint8_t poly_0_b[] = { 0, 3, 19, 18, 6, 4 };
 static const PolyPath digit_solids_0[] = {
   { poly_0_a, ARRAY_LENGTH(poly_0_a) },
   { poly_0_b, ARRAY_LENGTH(poly_0_b) },
@@ -154,8 +154,8 @@ static const PolyPath digit_contours_8[] = {
   { contour_8_outer, ARRAY_LENGTH(contour_8_outer) },
   { contour_8_inner, ARRAY_LENGTH(contour_8_inner) },
 };
-static const uint8_t poly_8_a[] = { 0, 3, 15, 14, 6, 5, 13, 12 };
-static const uint8_t poly_8_b[] = { 8, 9, 13, 14, 10, 11, 19, 16 };
+static const uint8_t poly_8_a[] = { 0, 1, 9, 11, 19, 16, 19, 16 };
+static const uint8_t poly_8_b[] = { 0, 3, 19, 18, 6, 4 };
 static const PolyPath digit_solids_8[] = {
   { poly_8_a, ARRAY_LENGTH(poly_8_a) },
   { poly_8_b, ARRAY_LENGTH(poly_8_b) },
