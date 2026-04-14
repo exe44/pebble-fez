@@ -68,6 +68,22 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
   var mode = palette_mode || get_platform_palette_mode();
   var fallback = fallback_settings || get_default_settings(mode);
 
+  if (settings.SETTING_SLOW_VERSION === undefined || settings.SETTING_SLOW_VERSION === null) {
+    settings.SETTING_SLOW_VERSION = fallback.SETTING_SLOW_VERSION;
+  }
+
+  if (settings.SETTING_FACE_MIX_WITH_BACKGROUND === undefined || settings.SETTING_FACE_MIX_WITH_BACKGROUND === null) {
+    settings.SETTING_FACE_MIX_WITH_BACKGROUND = fallback.SETTING_FACE_MIX_WITH_BACKGROUND;
+  }
+
+  if (settings.SETTING_LINE_MIX_WITH_BACKGROUND === undefined || settings.SETTING_LINE_MIX_WITH_BACKGROUND === null) {
+    settings.SETTING_LINE_MIX_WITH_BACKGROUND = fallback.SETTING_LINE_MIX_WITH_BACKGROUND;
+  }
+
+  if (settings.SETTING_SPLIT_LINE_COLORS === undefined || settings.SETTING_SPLIT_LINE_COLORS === null) {
+    settings.SETTING_SPLIT_LINE_COLORS = fallback.SETTING_SPLIT_LINE_COLORS;
+  }
+
   if (!isFinite(settings.SETTING_BG_COLOR)) {
     settings.SETTING_BG_COLOR = fallback.SETTING_BG_COLOR;
   }

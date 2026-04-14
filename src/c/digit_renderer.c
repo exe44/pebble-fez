@@ -47,7 +47,7 @@ static void configure_layout(DigitRenderer *renderer, GRect bounds)
   const float height_scale = (float)bounds.size.h / 168.0f;
   float layout_scale = width_scale < height_scale ? width_scale : height_scale;
 #ifdef PBL_ROUND
-  layout_scale *= 0.8f;
+  layout_scale *= 0.9f;
 #endif
 
   state->poly_scale = 1.4f * layout_scale;

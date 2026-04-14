@@ -1,14 +1,14 @@
 {
   "color": {
     "SETTING_SLOW_VERSION": false,
-    "SETTING_BG_COLOR": "55ffff",
+    "SETTING_BG_COLOR": "000000",
     "SETTING_FACE_COLOR": "000000",
     "SETTING_FACE_MIX_WITH_BACKGROUND": false,
-    "SETTING_LINE_COLOR": "55ffff",
+    "SETTING_LINE_COLOR": "00aaff",
     "SETTING_LINE_MIX_WITH_BACKGROUND": false,
-    "SETTING_SPLIT_LINE_COLORS": false,
-    "SETTING_BACK_LINE_COLOR": "55ffff",
-    "SETTING_SIDE_LINE_COLOR": "55ffff"
+    "SETTING_SPLIT_LINE_COLORS": true,
+    "SETTING_BACK_LINE_COLOR": "aaaa55",
+    "SETTING_SIDE_LINE_COLOR": "ff55aa"
   },
   "bw": {
     "SETTING_SLOW_VERSION": false,
