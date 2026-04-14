@@ -5,7 +5,11 @@ const path = require('path');
 const Module = require('module');
 
 const repoRoot = path.resolve(__dirname, '..');
-const bwPlatforms = new Set(['aplite', 'diorite', 'flint']);
+const firmwareMajorByPlatform = {
+  aplite: 2,
+  diorite: 3,
+  flint: 3
+};
 
 function getArg(name, fallback) {
   const prefix = `--${name}=`;
@@ -27,7 +31,7 @@ function buildWatchInfo(platform) {
   return {
     platform: platform,
     firmware: {
-      major: bwPlatforms.has(platform) ? 2 : 3,
+      major: firmwareMajorByPlatform[platform] || 3,
       minor: 0
     }
   };
@@ -47,12 +51,45 @@ function loadSavedSettings(settingsPath) {
   }
 }
 
+function getPlatformPaletteMode(platform) {
+  const watchInfo = buildWatchInfo(platform);
+  const firmware = watchInfo.firmware;
+
+  if (firmware && firmware.major === 2) {
+    return 'bw';
+  }
+
+  if (platform === 'aplite' || platform === 'diorite' || platform === 'flint') {
+    return 'bw';
+  }
+
+  return 'color';
+}
+
+function cloneSettings(settings) {
+  return {
+    SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION,
+    SETTING_BG_COLOR: settings.SETTING_BG_COLOR,
+    SETTING_FACE_COLOR: settings.SETTING_FACE_COLOR,
+    SETTING_LINE_COLOR: settings.SETTING_LINE_COLOR,
+    SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND,
+    SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
+    SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS,
+    SETTING_BACK_LINE_COLOR: settings.SETTING_BACK_LINE_COLOR,
+    SETTING_SIDE_LINE_COLOR: settings.SETTING_SIDE_LINE_COLOR
+  };
+}
+
 function main() {
   const platform = getArg('platform', 'basalt');
   const outputPath = path.resolve(repoRoot, getArg('out', `build/clay-preview-${platform}.html`));
   const settingsPathArg = getArg('settings', '');
   const settingsPath = settingsPathArg ? path.resolve(repoRoot, settingsPathArg) : '';
   const savedSettings = loadSavedSettings(settingsPath);
+  const paletteMode = getPlatformPaletteMode(platform);
+  const storage = {
+    'clay-settings': JSON.stringify(savedSettings)
+  };
   const originalLoad = Module._load;
 
   Module._load = function(request, parent, isMain) {
@@ -79,20 +116,22 @@ function main() {
 
   global.localStorage = {
     getItem: function(key) {
-      if (key === 'clay-settings') {
-        return JSON.stringify(savedSettings);
-      }
-
-      return null;
+      return Object.prototype.hasOwnProperty.call(storage, key) ? storage[key] : null;
     },
-    setItem: function() {}
+    setItem: function(key, value) {
+      storage[key] = String(value);
+    }
   };
 
   const Clay = require(path.join(repoRoot, 'node_modules/@rebble/clay/dist/js/index.js'));
   const clayConfig = require(path.join(repoRoot, 'src/pkjs/config'));
   const customClay = require(path.join(repoRoot, 'src/pkjs/custom-clay'));
+  const defaultSettings = require(path.join(repoRoot, 'src/pkjs/default-settings.auto'));
   const clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
   const activeWatchInfo = buildWatchInfo(platform);
+  const initialSettings = Object.keys(savedSettings).length > 0
+    ? savedSettings
+    : cloneSettings(defaultSettings[paletteMode] || defaultSettings.color);
 
   clay.meta = {
     activeWatchInfo: activeWatchInfo,
@@ -100,6 +139,7 @@ function main() {
     watchToken: '',
     userData: {}
   };
+  clay.setSettings(initialSettings);
   const previewUrl = clay.generateUrl();
   const hashIndex = previewUrl.indexOf('#');
 

@@ -8,6 +8,7 @@
   ],
   "private": true,
   "scripts": {
+    "generate:defaults": "node scripts/generate-default-settings.js",
     "preview:clay": "node scripts/preview-clay-config.js"
   },
   "dependencies": {

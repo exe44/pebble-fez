@@ -1,6 +1,7 @@
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
 var customClay = require('./custom-clay');
+var defaultSettings = require('./default-settings.auto');
 var buildEmulatorConfigUrl = require('./emulator-config');
 
 var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
@@ -17,13 +18,53 @@ var MESSAGE_KEYS = {
   SETTING_SIDE_LINE_COLOR: 8
 };
 
-function sanitize_settings(settings) {
+function get_platform_palette_mode() {
+  if (typeof Pebble === 'undefined') {
+    return 'color';
+  }
+
+  var watch_info = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
+  var platform = watch_info && watch_info.platform;
+  var firmware = watch_info && watch_info.firmware;
+
+  if (firmware && firmware.major === 2) {
+    return 'bw';
+  }
+
+  if (platform === 'aplite' || platform === 'diorite' || platform === 'flint') {
+    return 'bw';
+  }
+
+  return 'color';
+}
+
+function clone_settings(settings) {
+  return {
+    SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION,
+    SETTING_BG_COLOR: settings.SETTING_BG_COLOR,
+    SETTING_FACE_COLOR: settings.SETTING_FACE_COLOR,
+    SETTING_LINE_COLOR: settings.SETTING_LINE_COLOR,
+    SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND,
+    SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
+    SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS,
+    SETTING_BACK_LINE_COLOR: settings.SETTING_BACK_LINE_COLOR,
+    SETTING_SIDE_LINE_COLOR: settings.SETTING_SIDE_LINE_COLOR
+  };
+}
+
+function get_default_settings(palette_mode) {
+  return clone_settings(defaultSettings[palette_mode] || defaultSettings.color);
+}
+
+function sanitize_settings(settings, fallback_settings) {
+  var fallback = fallback_settings || get_default_settings(get_platform_palette_mode());
+
   if (!isFinite(settings.SETTING_BG_COLOR)) {
-    settings.SETTING_BG_COLOR = 0x000000;
+    settings.SETTING_BG_COLOR = fallback.SETTING_BG_COLOR;
   }
 
   if (!isFinite(settings.SETTING_FACE_COLOR)) {
-    settings.SETTING_FACE_COLOR = 0xFFAA00;
+    settings.SETTING_FACE_COLOR = fallback.SETTING_FACE_COLOR;
   }
 
   if (settings.SETTING_BG_COLOR === 0 || settings.SETTING_BG_COLOR === 1) {
@@ -41,15 +82,15 @@ function sanitize_settings(settings) {
   settings.SETTING_FACE_MIX_WITH_BACKGROUND = settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0;
   settings.SETTING_LINE_MIX_WITH_BACKGROUND = settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0;
   if (!isFinite(settings.SETTING_LINE_COLOR)) {
-    settings.SETTING_LINE_COLOR = 0xFFFFFF;
+    settings.SETTING_LINE_COLOR = fallback.SETTING_LINE_COLOR;
   }
 
   if (!isFinite(settings.SETTING_BACK_LINE_COLOR)) {
-    settings.SETTING_BACK_LINE_COLOR = settings.SETTING_LINE_COLOR;
+    settings.SETTING_BACK_LINE_COLOR = fallback.SETTING_BACK_LINE_COLOR;
   }
 
   if (!isFinite(settings.SETTING_SIDE_LINE_COLOR)) {
-    settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_LINE_COLOR;
+    settings.SETTING_SIDE_LINE_COLOR = fallback.SETTING_SIDE_LINE_COLOR;
   }
 
   settings.SETTING_LINE_COLOR = settings.SETTING_LINE_COLOR & 0xFFFFFF;
@@ -65,19 +106,7 @@ function is_emulator() {
 }
 
 function get_emulator_palette_mode() {
-  var watch_info = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
-  var platform = watch_info && watch_info.platform;
-  var firmware = watch_info && watch_info.firmware;
-
-  if (firmware && firmware.major === 2) {
-    return 'bw';
-  }
-
-  if (platform === 'aplite' || platform === 'diorite' || platform === 'flint') {
-    return 'bw';
-  }
-
-  return 'color';
+  return get_platform_palette_mode();
 }
 
 function load_saved_settings() {
@@ -129,16 +158,19 @@ function normalize_emulator_settings(response) {
 }
 
 Pebble.addEventListener('showConfiguration', function() {
+  var palette_mode = get_platform_palette_mode();
+  var fallback_settings = get_default_settings(palette_mode);
   var saved_settings = load_saved_settings();
+  var initial_settings = sanitize_settings(saved_settings, fallback_settings);
 
   if (is_emulator()) {
     current_config_mode = 'emulator';
-    Pebble.openURL(buildEmulatorConfigUrl(saved_settings, get_emulator_palette_mode()));
+    Pebble.openURL(buildEmulatorConfigUrl(initial_settings, palette_mode));
     return;
   }
 
   current_config_mode = 'clay';
-  clay.setSettings(saved_settings);
+  clay.setSettings(initial_settings);
   Pebble.openURL(clay.generateUrl());
 });
 

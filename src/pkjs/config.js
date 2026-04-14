@@ -1,3 +1,10 @@
+var defaultSettings = require('./default-settings.auto');
+var schemaDefaults = defaultSettings.color;
+
+function color_default(value) {
+  return value.toString(16).padStart(6, '0').toLowerCase();
+}
+
 module.exports = [
   {
     type: 'heading',
@@ -15,13 +22,13 @@ module.exports = [
         type: 'toggle',
         messageKey: 'SETTING_SLOW_VERSION',
         label: 'Slow animation',
-        defaultValue: false
+        defaultValue: schemaDefaults.SETTING_SLOW_VERSION
       },
       {
         type: 'color',
         messageKey: 'SETTING_BG_COLOR',
         label: 'Background color',
-        defaultValue: '000000',
+        defaultValue: color_default(schemaDefaults.SETTING_BG_COLOR),
         allowGray: true
       }
     ]
@@ -33,7 +40,7 @@ module.exports = [
         type: 'color',
         messageKey: 'SETTING_FACE_COLOR',
         label: 'Face color',
-        defaultValue: 'ffaa00',
+        defaultValue: color_default(schemaDefaults.SETTING_FACE_COLOR),
         allowGray: true,
         description: 'Digit fill color.'
       },
@@ -41,7 +48,7 @@ module.exports = [
         type: 'toggle',
         messageKey: 'SETTING_FACE_MIX_WITH_BACKGROUND',
         label: 'Face mix with background',
-        defaultValue: false
+        defaultValue: schemaDefaults.SETTING_FACE_MIX_WITH_BACKGROUND
       }
     ]
   },
@@ -52,7 +59,7 @@ module.exports = [
         type: 'color',
         messageKey: 'SETTING_LINE_COLOR',
         label: 'Line color',
-        defaultValue: 'ffffff',
+        defaultValue: color_default(schemaDefaults.SETTING_LINE_COLOR),
         allowGray: true,
         description: 'Used for all lines when split is off.'
       },
@@ -60,27 +67,27 @@ module.exports = [
         type: 'toggle',
         messageKey: 'SETTING_LINE_MIX_WITH_BACKGROUND',
         label: 'Line mix with background',
-        defaultValue: false
+        defaultValue: schemaDefaults.SETTING_LINE_MIX_WITH_BACKGROUND
       },
       {
         type: 'toggle',
         messageKey: 'SETTING_SPLIT_LINE_COLORS',
         label: 'Split line colors',
         description: 'Enable separate back and side colors.',
-        defaultValue: false
+        defaultValue: schemaDefaults.SETTING_SPLIT_LINE_COLORS
       },
       {
         type: 'color',
         messageKey: 'SETTING_BACK_LINE_COLOR',
         label: 'Back line color',
-        defaultValue: 'ffffff',
+        defaultValue: color_default(schemaDefaults.SETTING_BACK_LINE_COLOR),
         allowGray: true
       },
       {
         type: 'color',
         messageKey: 'SETTING_SIDE_LINE_COLOR',
         label: 'Side line color',
-        defaultValue: 'ffffff',
+        defaultValue: color_default(schemaDefaults.SETTING_SIDE_LINE_COLOR),
         allowGray: true
       }
     ]

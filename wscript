@@ -1,5 +1,6 @@
 import json
 import os.path
+import subprocess
 
 top = '.'
 out = 'build'
@@ -37,8 +38,13 @@ def _generate_emulator_config_template():
         output_file.write(output)
 
 
+def _generate_default_settings():
+    subprocess.check_call(['node', 'scripts/generate-default-settings.js'])
+
+
 def build(ctx):
     ctx.load('pebble_sdk')
+    _generate_default_settings()
     _generate_emulator_config_template()
 
     binaries = []

@@ -1,4 +1,5 @@
 #include "app_settings.h"
+#include "app_settings_defaults.auto.h"
 
 static int32_t sanitize_color_value(int32_t value, int32_t fallback)
 {
@@ -28,10 +29,10 @@ static GColor mix_with_background(const AppSettings *settings, int32_t color)
 
 static void sanitize_settings(AppSettings *settings)
 {
-  settings->bg_color = sanitize_color_value(settings->bg_color, 0x000000);
-  settings->face_color = sanitize_color_value(settings->face_color, 0xFFAA00);
+  settings->bg_color = sanitize_color_value(settings->bg_color, DEFAULT_SETTING_BG_COLOR);
+  settings->face_color = sanitize_color_value(settings->face_color, DEFAULT_SETTING_FACE_COLOR);
   settings->face_mix_with_background = settings->face_mix_with_background ? true : false;
-  settings->line_color = sanitize_color_value(settings->line_color, 0xFFFFFF);
+  settings->line_color = sanitize_color_value(settings->line_color, DEFAULT_SETTING_LINE_COLOR);
   settings->line_mix_with_background = settings->line_mix_with_background ? true : false;
   settings->back_line_color = sanitize_color_value(settings->back_line_color, settings->line_color);
   settings->side_line_color = sanitize_color_value(settings->side_line_color, settings->line_color);
@@ -40,27 +41,27 @@ static void sanitize_settings(AppSettings *settings)
 
 void app_settings_load(AppSettings *settings)
 {
-  settings->slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : false;
-  settings->bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : 0x000000;
-  settings->face_color = persist_exists(PERSIST_KEY_FACE_COLOR) ? persist_read_int(PERSIST_KEY_FACE_COLOR) : 0xFFAA00;
+  settings->slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : DEFAULT_SETTING_SLOW_VERSION;
+  settings->bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : DEFAULT_SETTING_BG_COLOR;
+  settings->face_color = persist_exists(PERSIST_KEY_FACE_COLOR) ? persist_read_int(PERSIST_KEY_FACE_COLOR) : DEFAULT_SETTING_FACE_COLOR;
   settings->face_mix_with_background = persist_exists(PERSIST_KEY_FACE_MIX_WITH_BACKGROUND)
     ? persist_read_bool(PERSIST_KEY_FACE_MIX_WITH_BACKGROUND)
-    : false;
+    : DEFAULT_SETTING_FACE_MIX_WITH_BACKGROUND;
   settings->line_color = persist_exists(PERSIST_KEY_LINE_COLOR)
     ? persist_read_int(PERSIST_KEY_LINE_COLOR)
-    : 0xFFFFFF;
+    : DEFAULT_SETTING_LINE_COLOR;
   settings->line_mix_with_background = persist_exists(PERSIST_KEY_LINE_MIX_WITH_BACKGROUND)
     ? persist_read_bool(PERSIST_KEY_LINE_MIX_WITH_BACKGROUND)
-    : false;
+    : DEFAULT_SETTING_LINE_MIX_WITH_BACKGROUND;
   settings->split_line_colors = persist_exists(PERSIST_KEY_SPLIT_LINE_COLORS)
     ? persist_read_bool(PERSIST_KEY_SPLIT_LINE_COLORS)
-    : false;
+    : DEFAULT_SETTING_SPLIT_LINE_COLORS;
   settings->back_line_color = persist_exists(PERSIST_KEY_BACK_LINE_COLOR)
     ? persist_read_int(PERSIST_KEY_BACK_LINE_COLOR)
-    : settings->line_color;
+    : DEFAULT_SETTING_BACK_LINE_COLOR;
   settings->side_line_color = persist_exists(PERSIST_KEY_SIDE_LINE_COLOR)
     ? persist_read_int(PERSIST_KEY_SIDE_LINE_COLOR)
-    : settings->line_color;
+    : DEFAULT_SETTING_SIDE_LINE_COLOR;
 
   sanitize_settings(settings);
 }
