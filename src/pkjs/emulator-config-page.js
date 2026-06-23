@@ -1,6 +1,7 @@
 (function() {
   var current_bg;
   var current_face;
+  var current_face_colors;
   var current_line;
   var current_back_line;
   var current_side_line;
@@ -163,6 +164,11 @@
     document.getElementById('randomize-card').className =
       hide_advanced_colors ? 'card hidden' : 'card';
 
+    ['face-1-card', 'face-2-card', 'face-3-card', 'face-4-card'].forEach(function(id) {
+      document.getElementById(id).className = document.getElementById('split-face-colors').checked ?
+        'face-subsection' : 'face-subsection hidden';
+    });
+
     if (hide_advanced_colors) {
       document.getElementById('back-line-card').className = 'line-subsection hidden';
       document.getElementById('side-line-card').className = 'line-subsection hidden';
@@ -182,6 +188,9 @@
 
     if (document.getElementById('randomize-face').checked) {
       current_face = pick_random_color();
+      if (document.getElementById('split-face-colors').checked) {
+        current_face_colors = [pick_random_color(), pick_random_color(), pick_random_color(), pick_random_color()];
+      }
     }
 
     if (!document.getElementById('randomize-line').checked) {
@@ -213,6 +222,13 @@
       repaint();
     });
 
+    current_face_colors.forEach(function(face_color, index) {
+      render_palette('face-' + (index + 1) + '-palette', face_color, function(color) {
+        current_face_colors[index] = color;
+        repaint();
+      });
+    });
+
     render_palette('line-palette', current_line, function(color) {
       current_line = color;
       repaint();
@@ -234,16 +250,24 @@
   document.getElementById('slow').checked = get_param('slow', '0') === '1';
   current_bg = round_to_palette(normalize_hex('bg', '000000'));
   current_face = round_to_palette(normalize_hex('face', 'ffaa00'));
+  current_face_colors = [
+    round_to_palette(normalize_hex('face1', current_face)),
+    round_to_palette(normalize_hex('face2', current_face)),
+    round_to_palette(normalize_hex('face3', current_face)),
+    round_to_palette(normalize_hex('face4', current_face))
+  ];
   current_line = round_to_palette(normalize_hex('line', 'ffffff'));
   current_back_line = round_to_palette(normalize_hex('backLine', current_line));
   current_side_line = round_to_palette(normalize_hex('sideLine', current_line));
   document.getElementById('face-mix').checked = get_param('faceMix', '0') === '1';
+  document.getElementById('split-face-colors').checked = get_param('splitFace', '0') === '1';
   document.getElementById('line-mix').checked = get_param('lineMix', '0') === '1';
   document.getElementById('split-line-colors').checked = get_param('splitLine', '0') === '1';
   document.getElementById('randomize-bg').checked = false;
   document.getElementById('randomize-face').checked = true;
   document.getElementById('randomize-line').checked = true;
   document.getElementById('split-line-colors').addEventListener('change', repaint);
+  document.getElementById('split-face-colors').addEventListener('change', repaint);
   document.getElementById('randomize-colors').addEventListener('click', randomize_colors);
   repaint();
 
@@ -252,6 +276,11 @@
       SETTING_SLOW_VERSION: document.getElementById('slow').checked ? 1 : 0,
       SETTING_BG_COLOR: parseInt(current_bg, 16),
       SETTING_FACE_COLOR: parseInt(current_face, 16),
+      SETTING_SPLIT_FACE_COLORS: document.getElementById('split-face-colors').checked ? 1 : 0,
+      SETTING_FACE_COLOR_1: parseInt(current_face_colors[0], 16),
+      SETTING_FACE_COLOR_2: parseInt(current_face_colors[1], 16),
+      SETTING_FACE_COLOR_3: parseInt(current_face_colors[2], 16),
+      SETTING_FACE_COLOR_4: parseInt(current_face_colors[3], 16),
       SETTING_LINE_COLOR: parseInt(current_line, 16),
       SETTING_FACE_MIX_WITH_BACKGROUND: document.getElementById('face-mix').checked ? 1 : 0,
       SETTING_LINE_MIX_WITH_BACKGROUND: document.getElementById('line-mix').checked ? 1 : 0,

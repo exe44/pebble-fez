@@ -31,6 +31,11 @@ static void sanitize_settings(AppSettings *settings)
 {
   settings->bg_color = sanitize_color_value(settings->bg_color, DEFAULT_SETTING_BG_COLOR);
   settings->face_color = sanitize_color_value(settings->face_color, DEFAULT_SETTING_FACE_COLOR);
+  settings->split_face_colors = settings->split_face_colors ? true : false;
+  for (int i = 0; i < (int)ARRAY_LENGTH(settings->face_colors); ++i)
+  {
+    settings->face_colors[i] = sanitize_color_value(settings->face_colors[i], settings->face_color);
+  }
   settings->face_mix_with_background = settings->face_mix_with_background ? true : false;
   settings->line_color = sanitize_color_value(settings->line_color, DEFAULT_SETTING_LINE_COLOR);
   settings->line_mix_with_background = settings->line_mix_with_background ? true : false;
@@ -44,6 +49,13 @@ void app_settings_load(AppSettings *settings)
   settings->slow_version = persist_exists(PERSIST_KEY_SLOW_VERSION) ? persist_read_bool(PERSIST_KEY_SLOW_VERSION) : DEFAULT_SETTING_SLOW_VERSION;
   settings->bg_color = persist_exists(PERSIST_KEY_BG_COLOR) ? persist_read_int(PERSIST_KEY_BG_COLOR) : DEFAULT_SETTING_BG_COLOR;
   settings->face_color = persist_exists(PERSIST_KEY_FACE_COLOR) ? persist_read_int(PERSIST_KEY_FACE_COLOR) : DEFAULT_SETTING_FACE_COLOR;
+  settings->split_face_colors = persist_exists(PERSIST_KEY_SPLIT_FACE_COLORS)
+    ? persist_read_bool(PERSIST_KEY_SPLIT_FACE_COLORS)
+    : DEFAULT_SETTING_SPLIT_FACE_COLORS;
+  settings->face_colors[0] = persist_exists(PERSIST_KEY_FACE_COLOR_1) ? persist_read_int(PERSIST_KEY_FACE_COLOR_1) : DEFAULT_SETTING_FACE_COLOR_1;
+  settings->face_colors[1] = persist_exists(PERSIST_KEY_FACE_COLOR_2) ? persist_read_int(PERSIST_KEY_FACE_COLOR_2) : DEFAULT_SETTING_FACE_COLOR_2;
+  settings->face_colors[2] = persist_exists(PERSIST_KEY_FACE_COLOR_3) ? persist_read_int(PERSIST_KEY_FACE_COLOR_3) : DEFAULT_SETTING_FACE_COLOR_3;
+  settings->face_colors[3] = persist_exists(PERSIST_KEY_FACE_COLOR_4) ? persist_read_int(PERSIST_KEY_FACE_COLOR_4) : DEFAULT_SETTING_FACE_COLOR_4;
   settings->face_mix_with_background = persist_exists(PERSIST_KEY_FACE_MIX_WITH_BACKGROUND)
     ? persist_read_bool(PERSIST_KEY_FACE_MIX_WITH_BACKGROUND)
     : DEFAULT_SETTING_FACE_MIX_WITH_BACKGROUND;
@@ -71,6 +83,11 @@ void app_settings_save(const AppSettings *settings)
   persist_write_bool(PERSIST_KEY_SLOW_VERSION, settings->slow_version);
   persist_write_int(PERSIST_KEY_BG_COLOR, settings->bg_color);
   persist_write_int(PERSIST_KEY_FACE_COLOR, settings->face_color);
+  persist_write_bool(PERSIST_KEY_SPLIT_FACE_COLORS, settings->split_face_colors);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_1, settings->face_colors[0]);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_2, settings->face_colors[1]);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_3, settings->face_colors[2]);
+  persist_write_int(PERSIST_KEY_FACE_COLOR_4, settings->face_colors[3]);
   persist_write_bool(PERSIST_KEY_FACE_MIX_WITH_BACKGROUND, settings->face_mix_with_background);
   persist_write_int(PERSIST_KEY_LINE_COLOR, settings->line_color);
   persist_write_bool(PERSIST_KEY_LINE_MIX_WITH_BACKGROUND, settings->line_mix_with_background);
@@ -85,6 +102,11 @@ bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *itera
   Tuple *slow_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SLOW_VERSION);
   Tuple *bg_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_BG_COLOR);
   Tuple *face_color_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR);
+  Tuple *split_face_colors_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SPLIT_FACE_COLORS);
+  Tuple *face_color_1_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR_1);
+  Tuple *face_color_2_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR_2);
+  Tuple *face_color_3_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR_3);
+  Tuple *face_color_4_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_COLOR_4);
   Tuple *face_mix_with_background_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_FACE_MIX_WITH_BACKGROUND);
   Tuple *line_color_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_LINE_COLOR);
   Tuple *line_mix_with_background_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_LINE_MIX_WITH_BACKGROUND);
@@ -107,6 +129,36 @@ bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *itera
   if (face_color_tuple != NULL)
   {
     settings->face_color = face_color_tuple->value->int32;
+    changed = true;
+  }
+
+  if (split_face_colors_tuple != NULL)
+  {
+    settings->split_face_colors = split_face_colors_tuple->value->int32 != 0;
+    changed = true;
+  }
+
+  if (face_color_1_tuple != NULL)
+  {
+    settings->face_colors[0] = face_color_1_tuple->value->int32;
+    changed = true;
+  }
+
+  if (face_color_2_tuple != NULL)
+  {
+    settings->face_colors[1] = face_color_2_tuple->value->int32;
+    changed = true;
+  }
+
+  if (face_color_3_tuple != NULL)
+  {
+    settings->face_colors[2] = face_color_3_tuple->value->int32;
+    changed = true;
+  }
+
+  if (face_color_4_tuple != NULL)
+  {
+    settings->face_colors[3] = face_color_4_tuple->value->int32;
     changed = true;
   }
 
@@ -189,4 +241,18 @@ GColor app_settings_get_face_color(const AppSettings *settings)
   return settings->face_mix_with_background
     ? mix_with_background(settings, settings->face_color)
     : GColorFromHEX(settings->face_color);
+}
+
+GColor app_settings_get_face_color_for_digit(const AppSettings *settings, int digit_index)
+{
+  int32_t color = settings->face_color;
+
+  if (settings->split_face_colors && digit_index >= 0 && digit_index < (int)ARRAY_LENGTH(settings->face_colors))
+  {
+    color = settings->face_colors[digit_index];
+  }
+
+  return settings->face_mix_with_background
+    ? mix_with_background(settings, color)
+    : GColorFromHEX(color);
 }

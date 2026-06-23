@@ -162,7 +162,7 @@ static void handle_init()
   window_stack_push(s_window, true);
 
   app_message_register_inbox_received(inbox_received_callback);
-  app_message_open(128, 128);
+  app_message_open(256, 256);
   tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
 }
 

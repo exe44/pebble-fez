@@ -9,7 +9,8 @@
   "private": true,
   "scripts": {
     "generate:defaults": "node scripts/generate-default-settings.js",
-    "preview:clay": "node scripts/preview-clay-config.js"
+    "preview:clay": "node scripts/preview-clay-config.js",
+    "serve:emulator-config": "node scripts/serve-emulator-config.js"
   },
   "dependencies": {
     "@rebble/clay": "^1.0.8"
@@ -31,7 +32,12 @@
       "SETTING_LINE_MIX_WITH_BACKGROUND": 5,
       "SETTING_SPLIT_LINE_COLORS": 6,
       "SETTING_BACK_LINE_COLOR": 7,
-      "SETTING_SIDE_LINE_COLOR": 8
+      "SETTING_SIDE_LINE_COLOR": 8,
+      "SETTING_SPLIT_FACE_COLORS": 9,
+      "SETTING_FACE_COLOR_1": 10,
+      "SETTING_FACE_COLOR_2": 11,
+      "SETTING_FACE_COLOR_3": 12,
+      "SETTING_FACE_COLOR_4": 13
     },
     "targetPlatforms": [
       "diorite",

@@ -7,6 +7,8 @@ typedef struct AppSettings
   bool slow_version;
   int32_t bg_color;
   int32_t face_color;
+  bool split_face_colors;
+  int32_t face_colors[4];
   bool face_mix_with_background;
   int32_t line_color;
   bool line_mix_with_background;
@@ -26,6 +28,11 @@ enum
   PERSIST_KEY_SPLIT_LINE_COLORS = 7,
   PERSIST_KEY_BACK_LINE_COLOR = 8,
   PERSIST_KEY_SIDE_LINE_COLOR = 9,
+  PERSIST_KEY_SPLIT_FACE_COLORS = 10,
+  PERSIST_KEY_FACE_COLOR_1 = 11,
+  PERSIST_KEY_FACE_COLOR_2 = 12,
+  PERSIST_KEY_FACE_COLOR_3 = 13,
+  PERSIST_KEY_FACE_COLOR_4 = 14,
 };
 
 void app_settings_load(AppSettings *settings);
@@ -36,3 +43,4 @@ GColor app_settings_get_line_color(const AppSettings *settings);
 GColor app_settings_get_back_line_color(const AppSettings *settings);
 GColor app_settings_get_side_line_color(const AppSettings *settings);
 GColor app_settings_get_face_color(const AppSettings *settings);
+GColor app_settings_get_face_color_for_digit(const AppSettings *settings, int digit_index);

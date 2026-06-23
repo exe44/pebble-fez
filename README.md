@@ -31,19 +31,55 @@ If this is your first checkout or `package.json` / `package-lock.json` changed, 
 - `src/c/math_helper.[hc]`: vector and matrix helpers
 - `src/c/poly_data.h`: static digit mesh data
 
-## Install
+## Test on an Emulator
 
-Install to a Basalt emulator:
+Build the project first; this also generates the emulator configuration page:
+
+```sh
+pebble build
+```
+
+Then start the local configuration server once and leave it running in a separate terminal:
+
+```sh
+npm run serve:emulator-config
+```
+
+Install to the desired platform. For example, Pebble Time uses `basalt`:
 
 ```sh
 pebble install --emulator basalt
 ```
 
-Install to a phone-connected watch target:
+Open the actual configuration flow in a browser with the Pebble SDK tool:
 
 ```sh
-pebble install --phone <ip>
+pebble emu-app-config --emulator basalt
 ```
+
+Keep only one emulator configuration page open at a time.
+
+Other useful platforms are `aplite`, `chalk`, `emery`, and `gabbro`. Stop the local configuration server with `Ctrl-C` when finished.
+
+## Test on a Physical Watch
+
+The default current workflow uses the Pebble mobile app's Dev Connect cloud relay. On the phone, open **Devices**, select the overflow menu, enable **Dev Connect**, and sign in with GitHub. Then sign in to the CLI with the same GitHub account:
+
+```sh
+pebble login
+```
+
+Build, install, and view logs:
+
+```sh
+pebble build
+pebble install --cloudpebble --logs
+pebble logs --cloudpebble
+```
+
+Pebble Time 2 uses the `emery` platform and is included in the generated bundle. Open FEZ's settings from the mobile app to test the normal Clay configuration page; this does not require `npm run serve:emulator-config`.
+
+For the legacy local Wi-Fi developer connection, enable **Developer Connection** in the mobile app, note its Server IP, then use `pebble install --phone <ip>` and `pebble logs --phone <ip>`.
 
 ## Tested Platforms
 

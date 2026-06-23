@@ -58,6 +58,27 @@ module.exports = function(minified) {
     side.disable();
   }
 
+  function sync_split_face_color_fields() {
+    var enabled = this.get();
+    var face_colors = [
+      clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_1'),
+      clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_2'),
+      clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_3'),
+      clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_4')
+    ];
+
+    face_colors.forEach(function(face_color) {
+      if (enabled) {
+        face_color.show();
+        face_color.enable();
+        return;
+      }
+
+      face_color.hide();
+      face_color.disable();
+    });
+  }
+
   function reset_bw_advanced_colors() {
     var line_color = clayConfig.getItemByMessageKey('SETTING_LINE_COLOR').get();
 
@@ -71,6 +92,7 @@ module.exports = function(minified) {
   function randomize_colors() {
     var targets = clayConfig.getItemById('randomize-targets').get();
     var split_toggle = clayConfig.getItemByMessageKey('SETTING_SPLIT_LINE_COLORS');
+    var split_face_toggle = clayConfig.getItemByMessageKey('SETTING_SPLIT_FACE_COLORS');
     var should_randomize_bg = !!targets[0];
     var should_randomize_face = !!targets[1];
     var should_randomize_line = !!targets[2];
@@ -82,6 +104,12 @@ module.exports = function(minified) {
 
     if (should_randomize_face) {
       clayConfig.getItemByMessageKey('SETTING_FACE_COLOR').set(pick_random_color());
+      if (split_face_toggle.get()) {
+        clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_1').set(pick_random_color());
+        clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_2').set(pick_random_color());
+        clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_3').set(pick_random_color());
+        clayConfig.getItemByMessageKey('SETTING_FACE_COLOR_4').set(pick_random_color());
+      }
     }
 
     if (!should_randomize_line) {
@@ -105,11 +133,15 @@ module.exports = function(minified) {
     var face_mix_toggle = clayConfig.getItemByMessageKey('SETTING_FACE_MIX_WITH_BACKGROUND');
     var line_mix_toggle = clayConfig.getItemByMessageKey('SETTING_LINE_MIX_WITH_BACKGROUND');
     var split_toggle = clayConfig.getItemByMessageKey('SETTING_SPLIT_LINE_COLORS');
+    var split_face_toggle = clayConfig.getItemByMessageKey('SETTING_SPLIT_FACE_COLORS');
     var back_line = clayConfig.getItemByMessageKey('SETTING_BACK_LINE_COLOR');
     var side_line = clayConfig.getItemByMessageKey('SETTING_SIDE_LINE_COLOR');
     var randomize_targets = clayConfig.getItemById('randomize-targets');
     var randomize_button = clayConfig.getItemById('randomize-colors');
     var hide_advanced_colors = is_bw_platform();
+
+    sync_split_face_color_fields.call(split_face_toggle);
+    split_face_toggle.on('change', sync_split_face_color_fields);
 
     if (hide_advanced_colors) {
       reset_bw_advanced_colors();

@@ -27,6 +27,7 @@ typedef struct PolyLayerData
   DigitRenderer *renderer;
   Poly *poly_ref;
   Vec3 pos;
+  int digit_index;
 } PolyLayerData;
 
 typedef struct ContourInfo
@@ -176,7 +177,7 @@ static void draw_poly_fill(GContext *ctx, const DigitRenderer *renderer, Poly *p
   const DigitPolyData *poly_data = poly->poly_data;
   int contour_num = parse_front_contours(poly_data, contours);
   int back_offset = DIGIT_SHARED_POINT_COUNT;
-  GColor fill_color = app_settings_get_face_color(renderer->state->settings);
+  GColor fill_color = app_settings_get_face_color_for_digit(renderer->state->settings, data->digit_index);
 
   for (int i = 0; i < poly_data->solid_poly_count; ++i)
   {
@@ -274,7 +275,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   }
 }
 
-static Layer* poly_layer_create(DigitRenderer *renderer, GSize size, Vec3 pos)
+static Layer* poly_layer_create(DigitRenderer *renderer, GSize size, Vec3 pos, int digit_index)
 {
   Layer *layer;
   PolyLayerData *data;
@@ -292,6 +293,7 @@ static Layer* poly_layer_create(DigitRenderer *renderer, GSize size, Vec3 pos)
   data->renderer = renderer;
   data->poly_ref = NULL;
   data->pos = pos;
+  data->digit_index = digit_index;
   layer_set_update_proc(layer, poly_layer_update_proc);
 
   return layer;
@@ -345,7 +347,7 @@ bool digit_renderer_init(DigitRenderer *renderer, Layer *root_layer,
 
   for (int i = 0; i < DIGIT_RENDERER_DIGIT_COUNT; ++i)
   {
-    renderer->state->digits[i] = poly_layer_create(renderer, renderer->state->digit_layer_size, renderer->state->digit_positions[i]);
+    renderer->state->digits[i] = poly_layer_create(renderer, renderer->state->digit_layer_size, renderer->state->digit_positions[i], i);
     if (renderer->state->digits[i] == NULL)
     {
       destroy_digit_layers(renderer->state);

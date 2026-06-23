@@ -46,6 +46,41 @@ module.exports = [
       },
       {
         type: 'toggle',
+        messageKey: 'SETTING_SPLIT_FACE_COLORS',
+        label: 'Split face colors',
+        description: 'Set a fill color for each digit.',
+        defaultValue: schemaDefaults.SETTING_SPLIT_FACE_COLORS
+      },
+      {
+        type: 'color',
+        messageKey: 'SETTING_FACE_COLOR_1',
+        label: 'Digit 1 face color',
+        defaultValue: color_default(schemaDefaults.SETTING_FACE_COLOR_1),
+        allowGray: true
+      },
+      {
+        type: 'color',
+        messageKey: 'SETTING_FACE_COLOR_2',
+        label: 'Digit 2 face color',
+        defaultValue: color_default(schemaDefaults.SETTING_FACE_COLOR_2),
+        allowGray: true
+      },
+      {
+        type: 'color',
+        messageKey: 'SETTING_FACE_COLOR_3',
+        label: 'Digit 3 face color',
+        defaultValue: color_default(schemaDefaults.SETTING_FACE_COLOR_3),
+        allowGray: true
+      },
+      {
+        type: 'color',
+        messageKey: 'SETTING_FACE_COLOR_4',
+        label: 'Digit 4 face color',
+        defaultValue: color_default(schemaDefaults.SETTING_FACE_COLOR_4),
+        allowGray: true
+      },
+      {
+        type: 'toggle',
         messageKey: 'SETTING_FACE_MIX_WITH_BACKGROUND',
         label: 'Face mix with background',
         defaultValue: schemaDefaults.SETTING_FACE_MIX_WITH_BACKGROUND

@@ -15,7 +15,12 @@ var MESSAGE_KEYS = {
   SETTING_LINE_MIX_WITH_BACKGROUND: 5,
   SETTING_SPLIT_LINE_COLORS: 6,
   SETTING_BACK_LINE_COLOR: 7,
-  SETTING_SIDE_LINE_COLOR: 8
+  SETTING_SIDE_LINE_COLOR: 8,
+  SETTING_SPLIT_FACE_COLORS: 9,
+  SETTING_FACE_COLOR_1: 10,
+  SETTING_FACE_COLOR_2: 11,
+  SETTING_FACE_COLOR_3: 12,
+  SETTING_FACE_COLOR_4: 13
 };
 
 function get_platform_palette_mode() {
@@ -43,6 +48,11 @@ function clone_settings(settings) {
     SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION,
     SETTING_BG_COLOR: settings.SETTING_BG_COLOR,
     SETTING_FACE_COLOR: settings.SETTING_FACE_COLOR,
+    SETTING_SPLIT_FACE_COLORS: settings.SETTING_SPLIT_FACE_COLORS,
+    SETTING_FACE_COLOR_1: settings.SETTING_FACE_COLOR_1,
+    SETTING_FACE_COLOR_2: settings.SETTING_FACE_COLOR_2,
+    SETTING_FACE_COLOR_3: settings.SETTING_FACE_COLOR_3,
+    SETTING_FACE_COLOR_4: settings.SETTING_FACE_COLOR_4,
     SETTING_LINE_COLOR: settings.SETTING_LINE_COLOR,
     SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND,
     SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
@@ -76,6 +86,10 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
     settings.SETTING_FACE_MIX_WITH_BACKGROUND = fallback.SETTING_FACE_MIX_WITH_BACKGROUND;
   }
 
+  if (settings.SETTING_SPLIT_FACE_COLORS === undefined || settings.SETTING_SPLIT_FACE_COLORS === null) {
+    settings.SETTING_SPLIT_FACE_COLORS = fallback.SETTING_SPLIT_FACE_COLORS;
+  }
+
   if (settings.SETTING_LINE_MIX_WITH_BACKGROUND === undefined || settings.SETTING_LINE_MIX_WITH_BACKGROUND === null) {
     settings.SETTING_LINE_MIX_WITH_BACKGROUND = fallback.SETTING_LINE_MIX_WITH_BACKGROUND;
   }
@@ -92,6 +106,18 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
     settings.SETTING_FACE_COLOR = fallback.SETTING_FACE_COLOR;
   }
 
+  ['SETTING_FACE_COLOR_1', 'SETTING_FACE_COLOR_2', 'SETTING_FACE_COLOR_3', 'SETTING_FACE_COLOR_4'].forEach(function(key) {
+    if (!isFinite(settings[key])) {
+      settings[key] = fallback[key];
+    }
+
+    if (settings[key] === 0 || settings[key] === 1) {
+      settings[key] = settings[key] === 0 ? 0x000000 : 0xFFFFFF;
+    }
+
+    settings[key] = settings[key] & 0xFFFFFF;
+  });
+
   if (settings.SETTING_BG_COLOR === 0 || settings.SETTING_BG_COLOR === 1) {
     settings.SETTING_BG_COLOR = settings.SETTING_BG_COLOR === 0 ? 0x000000 : 0xFFFFFF;
   }
@@ -105,6 +131,7 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
 
   settings.SETTING_SLOW_VERSION = settings.SETTING_SLOW_VERSION ? 1 : 0;
   settings.SETTING_FACE_MIX_WITH_BACKGROUND = settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0;
+  settings.SETTING_SPLIT_FACE_COLORS = settings.SETTING_SPLIT_FACE_COLORS ? 1 : 0;
   settings.SETTING_LINE_MIX_WITH_BACKGROUND = settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0;
   if (!isFinite(settings.SETTING_LINE_COLOR)) {
     settings.SETTING_LINE_COLOR = fallback.SETTING_LINE_COLOR;
@@ -167,6 +194,11 @@ function normalize_clay_settings(response) {
     SETTING_SLOW_VERSION: normalize_setting_value(settings.SETTING_SLOW_VERSION, fallback_settings.SETTING_SLOW_VERSION) ? 1 : 0,
     SETTING_BG_COLOR: parseInt(normalize_setting_value(settings.SETTING_BG_COLOR, fallback_settings.SETTING_BG_COLOR), 10),
     SETTING_FACE_COLOR: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR, fallback_settings.SETTING_FACE_COLOR), 10),
+    SETTING_SPLIT_FACE_COLORS: normalize_setting_value(settings.SETTING_SPLIT_FACE_COLORS, fallback_settings.SETTING_SPLIT_FACE_COLORS) ? 1 : 0,
+    SETTING_FACE_COLOR_1: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR_1, fallback_settings.SETTING_FACE_COLOR_1), 10),
+    SETTING_FACE_COLOR_2: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR_2, fallback_settings.SETTING_FACE_COLOR_2), 10),
+    SETTING_FACE_COLOR_3: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR_3, fallback_settings.SETTING_FACE_COLOR_3), 10),
+    SETTING_FACE_COLOR_4: parseInt(normalize_setting_value(settings.SETTING_FACE_COLOR_4, fallback_settings.SETTING_FACE_COLOR_4), 10),
     SETTING_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_LINE_COLOR, fallback_settings.SETTING_LINE_COLOR), 10),
     SETTING_FACE_MIX_WITH_BACKGROUND: normalize_setting_value(settings.SETTING_FACE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_FACE_MIX_WITH_BACKGROUND) ? 1 : 0,
     SETTING_LINE_MIX_WITH_BACKGROUND: normalize_setting_value(settings.SETTING_LINE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_LINE_MIX_WITH_BACKGROUND) ? 1 : 0,
@@ -183,6 +215,11 @@ function normalize_emulator_settings(response) {
     SETTING_SLOW_VERSION: settings.SETTING_SLOW_VERSION ? 1 : 0,
     SETTING_BG_COLOR: parseInt(settings.SETTING_BG_COLOR, 10),
     SETTING_FACE_COLOR: parseInt(settings.SETTING_FACE_COLOR, 10),
+    SETTING_SPLIT_FACE_COLORS: settings.SETTING_SPLIT_FACE_COLORS ? 1 : 0,
+    SETTING_FACE_COLOR_1: parseInt(settings.SETTING_FACE_COLOR_1, 10),
+    SETTING_FACE_COLOR_2: parseInt(settings.SETTING_FACE_COLOR_2, 10),
+    SETTING_FACE_COLOR_3: parseInt(settings.SETTING_FACE_COLOR_3, 10),
+    SETTING_FACE_COLOR_4: parseInt(settings.SETTING_FACE_COLOR_4, 10),
     SETTING_LINE_COLOR: parseInt(settings.SETTING_LINE_COLOR, 10),
     SETTING_FACE_MIX_WITH_BACKGROUND: settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0,
     SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0,
@@ -232,6 +269,11 @@ Pebble.addEventListener('webviewclosed', function(e) {
     [MESSAGE_KEYS.SETTING_SLOW_VERSION]: settings.SETTING_SLOW_VERSION,
     [MESSAGE_KEYS.SETTING_BG_COLOR]: settings.SETTING_BG_COLOR,
     [MESSAGE_KEYS.SETTING_FACE_COLOR]: settings.SETTING_FACE_COLOR,
+    [MESSAGE_KEYS.SETTING_SPLIT_FACE_COLORS]: settings.SETTING_SPLIT_FACE_COLORS,
+    [MESSAGE_KEYS.SETTING_FACE_COLOR_1]: settings.SETTING_FACE_COLOR_1,
+    [MESSAGE_KEYS.SETTING_FACE_COLOR_2]: settings.SETTING_FACE_COLOR_2,
+    [MESSAGE_KEYS.SETTING_FACE_COLOR_3]: settings.SETTING_FACE_COLOR_3,
+    [MESSAGE_KEYS.SETTING_FACE_COLOR_4]: settings.SETTING_FACE_COLOR_4,
     [MESSAGE_KEYS.SETTING_LINE_COLOR]: settings.SETTING_LINE_COLOR,
     [MESSAGE_KEYS.SETTING_FACE_MIX_WITH_BACKGROUND]: settings.SETTING_FACE_MIX_WITH_BACKGROUND,
     [MESSAGE_KEYS.SETTING_LINE_MIX_WITH_BACKGROUND]: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
