@@ -201,6 +201,41 @@ static void draw_poly_fill(GContext *ctx, const DigitRenderer *renderer, Poly *p
   }
 }
 
+static void draw_outline_line(GContext *ctx, GPoint start, GPoint end, bool thick_lines)
+{
+  graphics_draw_line(ctx, start, end);
+
+  if (!thick_lines)
+  {
+    return;
+  }
+
+  int16_t dx = end.x - start.x;
+  int16_t dy = end.y - start.y;
+
+  if (dx < 0)
+  {
+    dx = -dx;
+  }
+  if (dy < 0)
+  {
+    dy = -dy;
+  }
+
+  if (dx >= dy)
+  {
+    start.y += 1;
+    end.y += 1;
+  }
+  else
+  {
+    start.x += 1;
+    end.x += 1;
+  }
+
+  graphics_draw_line(ctx, start, end);
+}
+
 static void poly_layer_update_proc(Layer *layer, GContext* ctx)
 {
   PolyLayerData *data = layer_get_data(layer);
@@ -215,6 +250,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
   static GPoint screen_poss[DIGIT_SHARED_POINT_COUNT * 2];
   GPoint center_screen_pos;
   GRect frame = layer_get_frame(layer);
+  bool thick_lines = renderer->state->settings->thick_lines;
 
   world_to_screen_pos(&center_screen_pos, renderer, &data->pos);
 
@@ -244,7 +280,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
       int back_a = front_a + DIGIT_SHARED_POINT_COUNT;
       int back_b = front_b + DIGIT_SHARED_POINT_COUNT;
 
-      graphics_draw_line(ctx, screen_poss[back_a], screen_poss[back_b]);
+      draw_outline_line(ctx, screen_poss[back_a], screen_poss[back_b], thick_lines);
     }
   }
 
@@ -257,7 +293,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
       int front_a = contour->point_idxs[j];
       int back_a = front_a + DIGIT_SHARED_POINT_COUNT;
 
-      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[back_a]);
+      draw_outline_line(ctx, screen_poss[front_a], screen_poss[back_a], thick_lines);
     }
   }
 
@@ -270,7 +306,7 @@ static void poly_layer_update_proc(Layer *layer, GContext* ctx)
       int front_a = contour->point_idxs[j];
       int front_b = contour->point_idxs[(j + 1) % contour->point_count];
 
-      graphics_draw_line(ctx, screen_poss[front_a], screen_poss[front_b]);
+      draw_outline_line(ctx, screen_poss[front_a], screen_poss[front_b], thick_lines);
     }
   }
 }

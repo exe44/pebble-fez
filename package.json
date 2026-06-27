@@ -37,7 +37,8 @@
       "SETTING_FACE_COLOR_1": 10,
       "SETTING_FACE_COLOR_2": 11,
       "SETTING_FACE_COLOR_3": 12,
-      "SETTING_FACE_COLOR_4": 13
+      "SETTING_FACE_COLOR_4": 13,
+      "SETTING_THICK_LINES": 14
     },
     "targetPlatforms": [
       "diorite",

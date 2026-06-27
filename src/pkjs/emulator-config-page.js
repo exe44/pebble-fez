@@ -262,6 +262,7 @@
   document.getElementById('face-mix').checked = get_param('faceMix', '0') === '1';
   document.getElementById('split-face-colors').checked = get_param('splitFace', '0') === '1';
   document.getElementById('line-mix').checked = get_param('lineMix', '0') === '1';
+  document.getElementById('thick-lines').checked = get_param('thickLines', '0') === '1';
   document.getElementById('split-line-colors').checked = get_param('splitLine', '0') === '1';
   document.getElementById('randomize-bg').checked = false;
   document.getElementById('randomize-face').checked = true;
@@ -286,7 +287,8 @@
       SETTING_LINE_MIX_WITH_BACKGROUND: document.getElementById('line-mix').checked ? 1 : 0,
       SETTING_SPLIT_LINE_COLORS: document.getElementById('split-line-colors').checked ? 1 : 0,
       SETTING_BACK_LINE_COLOR: parseInt(current_back_line, 16),
-      SETTING_SIDE_LINE_COLOR: parseInt(current_side_line, 16)
+      SETTING_SIDE_LINE_COLOR: parseInt(current_side_line, 16),
+      SETTING_THICK_LINES: document.getElementById('thick-lines').checked ? 1 : 0
     };
     var return_to = get_return_to();
     var response = encodeURIComponent(JSON.stringify(result));

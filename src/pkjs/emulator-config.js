@@ -19,6 +19,7 @@ module.exports = function build_emulator_config_url(settings, palette_mode) {
     '&line=' + encode_value(settings.SETTING_LINE_COLOR, fallback_settings.SETTING_LINE_COLOR) +
     '&faceMix=' + encode_value(settings.SETTING_FACE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_FACE_MIX_WITH_BACKGROUND ? 1 : 0) +
     '&lineMix=' + encode_value(settings.SETTING_LINE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0) +
+    '&thickLines=' + encode_value(settings.SETTING_THICK_LINES, fallback_settings.SETTING_THICK_LINES ? 1 : 0) +
     '&splitLine=' + encode_value(settings.SETTING_SPLIT_LINE_COLORS, fallback_settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0) +
     '&backLine=' + encode_value(settings.SETTING_BACK_LINE_COLOR, fallback_settings.SETTING_BACK_LINE_COLOR) +
     '&sideLine=' + encode_value(settings.SETTING_SIDE_LINE_COLOR, fallback_settings.SETTING_SIDE_LINE_COLOR) +

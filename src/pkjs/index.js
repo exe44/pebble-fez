@@ -20,8 +20,19 @@ var MESSAGE_KEYS = {
   SETTING_FACE_COLOR_1: 10,
   SETTING_FACE_COLOR_2: 11,
   SETTING_FACE_COLOR_3: 12,
-  SETTING_FACE_COLOR_4: 13
+  SETTING_FACE_COLOR_4: 13,
+  SETTING_THICK_LINES: 14
 };
+
+function get_platform_name() {
+  if (typeof Pebble === 'undefined') {
+    return null;
+  }
+
+  var watch_info = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
+
+  return (watch_info && watch_info.platform) || Pebble.platform || null;
+}
 
 function get_platform_palette_mode() {
   if (typeof Pebble === 'undefined') {
@@ -29,7 +40,7 @@ function get_platform_palette_mode() {
   }
 
   var watch_info = Pebble.getActiveWatchInfo && Pebble.getActiveWatchInfo();
-  var platform = watch_info && watch_info.platform;
+  var platform = get_platform_name();
   var firmware = watch_info && watch_info.firmware;
 
   if (firmware && firmware.major === 2) {
@@ -41,6 +52,12 @@ function get_platform_palette_mode() {
   }
 
   return 'color';
+}
+
+function get_platform_default_thick_lines() {
+  var platform = get_platform_name();
+
+  return platform === 'emery' || platform === 'gabbro';
 }
 
 function clone_settings(settings) {
@@ -58,12 +75,17 @@ function clone_settings(settings) {
     SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
     SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS,
     SETTING_BACK_LINE_COLOR: settings.SETTING_BACK_LINE_COLOR,
-    SETTING_SIDE_LINE_COLOR: settings.SETTING_SIDE_LINE_COLOR
+    SETTING_SIDE_LINE_COLOR: settings.SETTING_SIDE_LINE_COLOR,
+    SETTING_THICK_LINES: settings.SETTING_THICK_LINES
   };
 }
 
 function get_default_settings(palette_mode) {
-  return clone_settings(defaultSettings[palette_mode] || defaultSettings.color);
+  var settings = clone_settings(defaultSettings[palette_mode] || defaultSettings.color);
+
+  settings.SETTING_THICK_LINES = get_platform_default_thick_lines() ? 1 : 0;
+
+  return settings;
 }
 
 function normalize_setting_value(setting, fallback) {
@@ -96,6 +118,10 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
 
   if (settings.SETTING_SPLIT_LINE_COLORS === undefined || settings.SETTING_SPLIT_LINE_COLORS === null) {
     settings.SETTING_SPLIT_LINE_COLORS = fallback.SETTING_SPLIT_LINE_COLORS;
+  }
+
+  if (settings.SETTING_THICK_LINES === undefined || settings.SETTING_THICK_LINES === null) {
+    settings.SETTING_THICK_LINES = fallback.SETTING_THICK_LINES;
   }
 
   if (!isFinite(settings.SETTING_BG_COLOR)) {
@@ -149,6 +175,7 @@ function sanitize_settings(settings, fallback_settings, palette_mode) {
   settings.SETTING_BACK_LINE_COLOR = settings.SETTING_BACK_LINE_COLOR & 0xFFFFFF;
   settings.SETTING_SIDE_LINE_COLOR = settings.SETTING_SIDE_LINE_COLOR & 0xFFFFFF;
   settings.SETTING_SPLIT_LINE_COLORS = settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0;
+  settings.SETTING_THICK_LINES = settings.SETTING_THICK_LINES ? 1 : 0;
 
   if (mode === 'bw') {
     settings.SETTING_FACE_MIX_WITH_BACKGROUND = 0;
@@ -204,7 +231,8 @@ function normalize_clay_settings(response) {
     SETTING_LINE_MIX_WITH_BACKGROUND: normalize_setting_value(settings.SETTING_LINE_MIX_WITH_BACKGROUND, fallback_settings.SETTING_LINE_MIX_WITH_BACKGROUND) ? 1 : 0,
     SETTING_SPLIT_LINE_COLORS: normalize_setting_value(settings.SETTING_SPLIT_LINE_COLORS, fallback_settings.SETTING_SPLIT_LINE_COLORS) ? 1 : 0,
     SETTING_BACK_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_BACK_LINE_COLOR, fallback_settings.SETTING_BACK_LINE_COLOR), 10),
-    SETTING_SIDE_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_SIDE_LINE_COLOR, fallback_settings.SETTING_SIDE_LINE_COLOR), 10)
+    SETTING_SIDE_LINE_COLOR: parseInt(normalize_setting_value(settings.SETTING_SIDE_LINE_COLOR, fallback_settings.SETTING_SIDE_LINE_COLOR), 10),
+    SETTING_THICK_LINES: normalize_setting_value(settings.SETTING_THICK_LINES, fallback_settings.SETTING_THICK_LINES) ? 1 : 0
   };
 }
 
@@ -225,7 +253,8 @@ function normalize_emulator_settings(response) {
     SETTING_LINE_MIX_WITH_BACKGROUND: settings.SETTING_LINE_MIX_WITH_BACKGROUND ? 1 : 0,
     SETTING_SPLIT_LINE_COLORS: settings.SETTING_SPLIT_LINE_COLORS ? 1 : 0,
     SETTING_BACK_LINE_COLOR: parseInt(settings.SETTING_BACK_LINE_COLOR, 10),
-    SETTING_SIDE_LINE_COLOR: parseInt(settings.SETTING_SIDE_LINE_COLOR, 10)
+    SETTING_SIDE_LINE_COLOR: parseInt(settings.SETTING_SIDE_LINE_COLOR, 10),
+    SETTING_THICK_LINES: settings.SETTING_THICK_LINES ? 1 : 0
   };
 }
 
@@ -279,7 +308,8 @@ Pebble.addEventListener('webviewclosed', function(e) {
     [MESSAGE_KEYS.SETTING_LINE_MIX_WITH_BACKGROUND]: settings.SETTING_LINE_MIX_WITH_BACKGROUND,
     [MESSAGE_KEYS.SETTING_SPLIT_LINE_COLORS]: settings.SETTING_SPLIT_LINE_COLORS,
     [MESSAGE_KEYS.SETTING_BACK_LINE_COLOR]: settings.SETTING_BACK_LINE_COLOR,
-    [MESSAGE_KEYS.SETTING_SIDE_LINE_COLOR]: settings.SETTING_SIDE_LINE_COLOR
+    [MESSAGE_KEYS.SETTING_SIDE_LINE_COLOR]: settings.SETTING_SIDE_LINE_COLOR,
+    [MESSAGE_KEYS.SETTING_THICK_LINES]: settings.SETTING_THICK_LINES
   }, function() {
     console.log('Sent config data to Pebble');
   }, function(err) {

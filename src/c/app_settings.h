@@ -15,6 +15,7 @@ typedef struct AppSettings
   bool split_line_colors;
   int32_t back_line_color;
   int32_t side_line_color;
+  bool thick_lines;
 } AppSettings;
 
 enum
@@ -33,6 +34,7 @@ enum
   PERSIST_KEY_FACE_COLOR_2 = 12,
   PERSIST_KEY_FACE_COLOR_3 = 13,
   PERSIST_KEY_FACE_COLOR_4 = 14,
+  PERSIST_KEY_THICK_LINES = 15,
 };
 
 void app_settings_load(AppSettings *settings);

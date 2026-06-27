@@ -106,6 +106,13 @@ module.exports = [
       },
       {
         type: 'toggle',
+        messageKey: 'SETTING_THICK_LINES',
+        label: 'Thicker lines',
+        description: 'Draw a second offset line for better visibility on higher resolution screens.',
+        defaultValue: schemaDefaults.SETTING_THICK_LINES
+      },
+      {
+        type: 'toggle',
         messageKey: 'SETTING_SPLIT_LINE_COLORS',
         label: 'Split line colors',
         description: 'Enable separate back and side colors.',

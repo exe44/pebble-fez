@@ -27,6 +27,15 @@ static GColor mix_with_background(const AppSettings *settings, int32_t color)
   return GColorFromHEX((r << 16) | (g << 8) | b);
 }
 
+static bool get_default_thick_lines(void)
+{
+#if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
+  return true;
+#else
+  return DEFAULT_SETTING_THICK_LINES;
+#endif
+}
+
 static void sanitize_settings(AppSettings *settings)
 {
   settings->bg_color = sanitize_color_value(settings->bg_color, DEFAULT_SETTING_BG_COLOR);
@@ -42,6 +51,7 @@ static void sanitize_settings(AppSettings *settings)
   settings->back_line_color = sanitize_color_value(settings->back_line_color, settings->line_color);
   settings->side_line_color = sanitize_color_value(settings->side_line_color, settings->line_color);
   settings->split_line_colors = settings->split_line_colors ? true : false;
+  settings->thick_lines = settings->thick_lines ? true : false;
 }
 
 void app_settings_load(AppSettings *settings)
@@ -74,6 +84,9 @@ void app_settings_load(AppSettings *settings)
   settings->side_line_color = persist_exists(PERSIST_KEY_SIDE_LINE_COLOR)
     ? persist_read_int(PERSIST_KEY_SIDE_LINE_COLOR)
     : DEFAULT_SETTING_SIDE_LINE_COLOR;
+  settings->thick_lines = persist_exists(PERSIST_KEY_THICK_LINES)
+    ? persist_read_bool(PERSIST_KEY_THICK_LINES)
+    : get_default_thick_lines();
 
   sanitize_settings(settings);
 }
@@ -94,6 +107,7 @@ void app_settings_save(const AppSettings *settings)
   persist_write_bool(PERSIST_KEY_SPLIT_LINE_COLORS, settings->split_line_colors);
   persist_write_int(PERSIST_KEY_BACK_LINE_COLOR, settings->back_line_color);
   persist_write_int(PERSIST_KEY_SIDE_LINE_COLOR, settings->side_line_color);
+  persist_write_bool(PERSIST_KEY_THICK_LINES, settings->thick_lines);
 }
 
 bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *iterator)
@@ -113,6 +127,7 @@ bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *itera
   Tuple *split_line_colors_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SPLIT_LINE_COLORS);
   Tuple *back_line_color_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_BACK_LINE_COLOR);
   Tuple *side_line_color_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_SIDE_LINE_COLOR);
+  Tuple *thick_lines_tuple = dict_find(iterator, MESSAGE_KEY_SETTING_THICK_LINES);
 
   if (slow_tuple != NULL)
   {
@@ -195,6 +210,12 @@ bool app_settings_apply_message(AppSettings *settings, DictionaryIterator *itera
   if (side_line_color_tuple != NULL)
   {
     settings->side_line_color = side_line_color_tuple->value->int32;
+    changed = true;
+  }
+
+  if (thick_lines_tuple != NULL)
+  {
+    settings->thick_lines = thick_lines_tuple->value->int32 != 0;
     changed = true;
   }
 
